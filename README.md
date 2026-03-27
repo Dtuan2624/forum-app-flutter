@@ -1,4 +1,4 @@
-# blog-app-flutter
+# Forum App Flutter
 Flutter
 Dart
 Android Studio (IDE)
