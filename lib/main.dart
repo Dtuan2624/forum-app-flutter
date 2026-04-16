@@ -12,10 +12,10 @@ import 'views/home/home_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   // 1. Initialize Hive for Web/Mobile/Desktop
   await Hive.initFlutter();
-  
+
   // 2. Open Boxes (Like tables in SQL)
   await Hive.openBox('users');
   await Hive.openBox('posts');

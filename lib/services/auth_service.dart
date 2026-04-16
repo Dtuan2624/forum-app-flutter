@@ -30,10 +30,10 @@ class AuthService {
   }
 
   Future<void> login(String email, String password) async {
-    // Hive stores data as key-value pairs. 
+    // Hive stores data as key-value pairs.
     // We can iterate over values to find the user.
     final users = _userBox.values.toList();
-    
+
     final userMap = users.firstWhere(
       (u) => u['email'] == email && u['password'] == password,
       orElse: () => throw Exception("Invalid credentials"),
@@ -64,7 +64,7 @@ class AuthService {
 
     final id = DateTime.now().millisecondsSinceEpoch.toString();
     final name = email.split('@')[0];
-    
+
     await _userBox.put(id, {
       'id': id,
       'email': email,
@@ -87,7 +87,7 @@ class AuthService {
     if (userMap != null) {
       if (name != null) userMap['name'] = name;
       if (avatar != null) userMap['avatar'] = avatar;
-      
+
       await _userBox.put(uid, userMap);
 
       _currentUser = _currentUser?.copyWith(name: name, avatar: avatar);
