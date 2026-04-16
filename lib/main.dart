@@ -12,11 +12,11 @@ import 'views/home/home_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
-  // 1. Initialize Hive for Web/Mobile/Desktop
+
+  // 1. Initialize Hive
   await Hive.initFlutter();
-  
-  // 2. Open Boxes (Like tables in SQL)
+
+  // 2. Open Boxes
   await Hive.openBox('users');
   await Hive.openBox('posts');
   await Hive.openBox('categories');
@@ -45,7 +45,7 @@ class MyApp extends StatelessWidget {
           primarySwatch: Colors.blue,
           useMaterial3: true,
         ),
-        home: const Root(),
+        home: const Root(), // Điểm bắt đầu là class Root bên dưới
       ),
     );
   }
@@ -56,18 +56,23 @@ class Root extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final authProvider = Provider.of<AppAuthProvider>(context);
+    // Lấy trạng thái từ AppAuthProvider
+    final auth = Provider.of<AppAuthProvider>(context);
 
-    if (authProvider.isLoading) {
+    // TRƯỜNG HỢP 1: Đang nạp dữ liệu từ bộ nhớ (Session)
+    if (auth.isLoading) {
       return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
+        body: Center(
+          child: CircularProgressIndicator(),
+        ),
       );
     }
 
-    if (authProvider.user == null) {
-      return const LoginScreen();
+    // TRƯỜNG HỢP 2: Đã nạp xong, kiểm tra xem có User hay không
+    if (auth.isLoggedIn) {
+      return const HomeScreen(); // Nếu có user -> vào thẳng Home
+    } else {
+      return const LoginScreen(); // Nếu chưa -> vào màn hình Login
     }
-
-    return const HomeScreen();
   }
-}
+} // Kết thúc class Root tại đây

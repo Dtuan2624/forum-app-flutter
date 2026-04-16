@@ -5,6 +5,8 @@ class CommentModel {
   final String userName;
   final String content;
   final DateTime createdAt;
+  final String? parentId;
+  final String? parentUserName;
 
   CommentModel({
     required this.id,
@@ -13,6 +15,8 @@ class CommentModel {
     required this.userName,
     required this.content,
     required this.createdAt,
+    this.parentId,
+    this.parentUserName,
   });
 
   Map<String, dynamic> toMap() {
@@ -23,6 +27,8 @@ class CommentModel {
       'userName': userName,
       'content': content,
       'createdAt': createdAt.toIso8601String(),
+      'parentId': parentId,
+      'parentUserName': parentUserName,
     };
   }
 
@@ -34,6 +40,8 @@ class CommentModel {
       userName: map['userName'],
       content: map['content'],
       createdAt: DateTime.parse(map['createdAt']),
+      parentId: map['parentId'],
+      parentUserName: map['parentUserName'],
     );
   }
 }

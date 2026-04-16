@@ -16,6 +16,9 @@ class PostDetailScreen extends StatefulWidget {
 
 class _PostDetailScreenState extends State<PostDetailScreen> {
   final commentCtrl = TextEditingController();
+  final focusNode = FocusNode();
+  String? _replyingToId;
+  String? _replyingToName;
 
   @override
   void initState() {
@@ -28,7 +31,23 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
   @override
   void dispose() {
     commentCtrl.dispose();
+    focusNode.dispose();
     super.dispose();
+  }
+
+  void _onReply(String commentId, String userName) {
+    setState(() {
+      _replyingToId = commentId;
+      _replyingToName = userName;
+    });
+    focusNode.requestFocus();
+  }
+
+  void _cancelReply() {
+    setState(() {
+      _replyingToId = null;
+      _replyingToName = null;
+    });
   }
 
   Future<void> _submitComment() async {
@@ -43,8 +62,11 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
         userId: authProvider.user!.id,
         userName: authProvider.user!.name,
         content: commentCtrl.text.trim(),
+        parentId: _replyingToId,
+        parentUserName: _replyingToName,
       );
       commentCtrl.clear();
+      _cancelReply();
       FocusScope.of(context).unfocus();
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -71,7 +93,6 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                   if (widget.post.imageUrl != null && widget.post.imageUrl!.isNotEmpty)
                     GestureDetector(
                       onTap: () {
-                        // Optional: Full screen view logic
                         showDialog(
                           context: context,
                           builder: (context) => Dialog.fullscreen(
@@ -104,7 +125,6 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                         child: AppImage(
                           imageUrl: widget.post.imageUrl!,
                           width: double.infinity,
-                          // Removed fixed height to allow full aspect ratio display
                           fit: BoxFit.fitWidth, 
                         ),
                       ),
@@ -146,19 +166,61 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                         final comment = commentProvider.comments[index];
                         final isOwner = comment.userId == authProvider.user?.id;
                         
-                        return ListTile(
-                          contentPadding: EdgeInsets.zero,
-                          title: Text(comment.userName, style: const TextStyle(fontWeight: FontWeight.bold)),
-                          subtitle: Text(comment.content),
-                          trailing: isOwner 
-                            ? IconButton(
-                                icon: const Icon(Icons.delete_outline, size: 20, color: Colors.red),
-                                onPressed: () => commentProvider.deleteComment(comment.id, widget.post.id),
-                              )
-                            : Text(
-                                "${comment.createdAt.hour}:${comment.createdAt.minute.toString().padLeft(2, '0')}",
-                                style: const TextStyle(fontSize: 12, color: Colors.grey),
+                        return Container(
+                          margin: EdgeInsets.only(
+                            left: comment.parentId != null ? 32.0 : 0.0,
+                            bottom: 8.0,
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          comment.userName,
+                                          style: const TextStyle(fontWeight: FontWeight.bold),
+                                        ),
+                                        if (comment.parentUserName != null)
+                                          Text(
+                                            "Trả lời @${comment.parentUserName}",
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: Colors.blue.shade700,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                        Text(comment.content),
+                                      ],
+                                    ),
+                                  ),
+                                  if (isOwner)
+                                    IconButton(
+                                      icon: const Icon(Icons.delete_outline, size: 20, color: Colors.red),
+                                      onPressed: () => commentProvider.deleteComment(comment.id, widget.post.id),
+                                    )
+                                  else
+                                    Text(
+                                      "${comment.createdAt.hour}:${comment.createdAt.minute.toString().padLeft(2, '0')}",
+                                      style: const TextStyle(fontSize: 12, color: Colors.grey),
+                                    ),
+                                ],
                               ),
+                              TextButton(
+                                style: TextButton.styleFrom(
+                                  padding: EdgeInsets.zero,
+                                  minimumSize: const Size(50, 30),
+                                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                ),
+                                onPressed: () => _onReply(comment.id, comment.userName),
+                                child: const Text("Reply", style: TextStyle(fontSize: 12)),
+                              ),
+                            ],
+                          ),
                         );
                       },
                     ),
@@ -180,20 +242,44 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
               ],
             ),
             child: SafeArea(
-              child: Row(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Expanded(
-                    child: TextField(
-                      controller: commentCtrl,
-                      decoration: const InputDecoration(
-                        hintText: "Write a comment...",
-                        border: InputBorder.none,
+                  if (_replyingToName != null)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8.0),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              "Replying to @$_replyingToName",
+                              style: const TextStyle(fontSize: 12, color: Colors.blue),
+                            ),
+                          ),
+                          GestureDetector(
+                            onTap: _cancelReply,
+                            child: const Icon(Icons.close, size: 16, color: Colors.grey),
+                          ),
+                        ],
                       ),
                     ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.send, color: Colors.blue),
-                    onPressed: _submitComment,
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: commentCtrl,
+                          focusNode: focusNode,
+                          decoration: const InputDecoration(
+                            hintText: "Write a comment...",
+                            border: InputBorder.none,
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.send, color: Colors.blue),
+                        onPressed: _submitComment,
+                      ),
+                    ],
                   ),
                 ],
               ),

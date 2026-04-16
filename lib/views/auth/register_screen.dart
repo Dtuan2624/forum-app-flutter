@@ -10,6 +10,8 @@ class RegisterScreen extends StatefulWidget {
 }
 
 class _RegisterState extends State<RegisterScreen> {
+  // 1. Thêm controller cho Name
+  final nameCtrl = TextEditingController();
   final emailCtrl = TextEditingController();
   final passCtrl = TextEditingController();
   final confirmCtrl = TextEditingController();
@@ -17,7 +19,9 @@ class _RegisterState extends State<RegisterScreen> {
   bool loading = false;
 
   Future<void> register() async {
-    if (emailCtrl.text.isEmpty ||
+    // 2. Kiểm tra thêm nameCtrl
+    if (nameCtrl.text.isEmpty ||
+        emailCtrl.text.isEmpty ||
         passCtrl.text.isEmpty ||
         confirmCtrl.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -36,14 +40,25 @@ class _RegisterState extends State<RegisterScreen> {
     setState(() => loading = true);
 
     try {
-      await Provider.of<AppAuthProvider>(context, listen: false)
-          .register(emailCtrl.text, passCtrl.text);
+      // 3. FIX LỖI: Truyền đủ 3 tham số (name, email, password)
+      final success = await Provider.of<AppAuthProvider>(context, listen: false)
+          .register(nameCtrl.text, emailCtrl.text, passCtrl.text);
 
       if (!context.mounted) return;
-      Navigator.pop(context); // Go back to login screen on success
+
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Registration Successful!")),
+        );
+        Navigator.pop(context); // Quay lại màn hình đăng nhập
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Registration Failed. Please try again.")),
+        );
+      }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Registration Failed: $e")),
+        SnackBar(content: Text("Error: $e")),
       );
     } finally {
       if (mounted) setState(() => loading = false);
@@ -54,31 +69,58 @@ class _RegisterState extends State<RegisterScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text("Register")),
-      body: Padding(
+      body: SingleChildScrollView( // Dùng SingleChildScrollView để tránh tràn màn hình khi hiện bàn phím
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
+            // 4. Thêm ô nhập Name vào giao diện
+            TextField(
+              controller: nameCtrl,
+              decoration: const InputDecoration(
+                labelText: "Full Name",
+                prefixIcon: Icon(Icons.person),
+              ),
+            ),
+            const SizedBox(height: 10),
             TextField(
               controller: emailCtrl,
-              decoration: const InputDecoration(labelText: "Email"),
+              decoration: const InputDecoration(
+                labelText: "Email",
+                prefixIcon: Icon(Icons.email),
+              ),
             ),
+            const SizedBox(height: 10),
             TextField(
               controller: passCtrl,
               obscureText: true,
-              decoration: const InputDecoration(labelText: "Password"),
+              decoration: const InputDecoration(
+                labelText: "Password",
+                prefixIcon: Icon(Icons.lock),
+              ),
             ),
+            const SizedBox(height: 10),
             TextField(
               controller: confirmCtrl,
               obscureText: true,
-              decoration: const InputDecoration(labelText: "Confirm Password"),
+              decoration: const InputDecoration(
+                labelText: "Confirm Password",
+                prefixIcon: Icon(Icons.lock_clock),
+              ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 30),
             loading
                 ? const CircularProgressIndicator()
-                : ElevatedButton(
-                    onPressed: register,
-                    child: const Text("Register"),
-                  ),
+                : SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: ElevatedButton(
+                onPressed: register,
+                style: ElevatedButton.styleFrom(
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+                child: const Text("REGISTER", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              ),
+            ),
           ],
         ),
       ),
