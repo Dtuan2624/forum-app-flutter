@@ -1,25 +1,40 @@
-import 'package:hive_flutter/hive_flutter.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/comment_model.dart';
 
 class CommentService {
-  final _box = Hive.box('comments');
+  final _db = FirebaseFirestore.instance;
 
   Future<List<CommentModel>> getComments(String postId) async {
-    final List<CommentModel> list = _box.values.map((item) {
-      return CommentModel.fromMap(Map<String, dynamic>.from(item));
-    }).toList();
+    final snapshot = await _db
+        .collection('comments')
+        .where('postId', isEqualTo: postId)
+        .orderBy('createdAt', descending: true)
+        .get();
 
-    return list
-        .where((c) => c.postId == postId)
-        .toList()
-      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return snapshot.docs.map((doc) {
+      final data = doc.data();
+      return CommentModel(
+        id: doc.id,
+        postId: data['postId'],
+        userId: data['userId'],
+        userName: data['userName'],
+        content: data['content'],
+        createdAt: (data['createdAt'] as Timestamp).toDate(),
+      );
+    }).toList();
   }
 
   Future<void> addComment(CommentModel comment) async {
-    await _box.put(comment.id, comment.toMap());
+    await _db.collection('comments').doc(comment.id).set({
+      'postId': comment.postId,
+      'userId': comment.userId,
+      'userName': comment.userName,
+      'content': comment.content,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
   }
 
   Future<void> deleteComment(String commentId) async {
-    await _box.delete(commentId);
+    await _db.collection('comments').doc(commentId).delete();
   }
 }

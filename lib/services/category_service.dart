@@ -1,44 +1,46 @@
-import 'package:hive_flutter/hive_flutter.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/category_model.dart';
 
 class CategoryService {
-  final _box = Hive.box('categories');
+  final _db = FirebaseFirestore.instance;
+
+  Stream<List<CategoryModel>> getCategoriesStream() {
+    // Your screenshot showed 'categories' and 'topics'. 
+    // Using 'categories' as shown in the middle panel of your screenshot.
+    return _db.collection('categories').snapshots().map((snapshot) {
+      return snapshot.docs.map((doc) {
+        return CategoryModel(
+          id: doc.id,
+          name: doc['name'] ?? '',
+        );
+      }).toList();
+    });
+  }
 
   Future<List<CategoryModel>> getCategories() async {
-    final List<CategoryModel> list = _box.values.map((item) {
+    final snapshot = await _db.collection('categories').get();
+    return snapshot.docs.map((doc) {
       return CategoryModel(
-        id: item['id'],
-        name: item['name'],
+        id: doc.id,
+        name: doc['name'] ?? '',
       );
     }).toList();
-
-    if (list.isEmpty) {
-      // Initialize with defaults if empty
-      await createCategory('General');
-      await createCategory('Technology');
-      await createCategory('Lifestyle');
-      return getCategories();
-    }
-
-    return list;
   }
 
   Future<void> createCategory(String name) async {
-    final id = DateTime.now().millisecondsSinceEpoch.toString();
-    await _box.put(id, {
-      'id': id,
+    await _db.collection('categories').add({
       'name': name,
+      'createdAt': FieldValue.serverTimestamp(),
     });
   }
 
   Future<void> updateCategory(String id, String name) async {
-    await _box.put(id, {
-      'id': id,
+    await _db.collection('categories').doc(id).update({
       'name': name,
     });
   }
 
   Future<void> deleteCategory(String id) async {
-    await _box.delete(id);
+    await _db.collection('categories').doc(id).delete();
   }
 }

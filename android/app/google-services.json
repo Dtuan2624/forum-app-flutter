@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "583408906988",
+    "project_id": "hz-forum-flutter",
+    "storage_bucket": "hz-forum-flutter.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:583408906988:android:f3671f7d0972bac0b26bc9",
+        "android_client_info": {
+          "package_name": "com.example.untitled2"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDfmPHmwIpm8H_bssXtFXL9zULTyfweWGY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -39,14 +39,17 @@ class _RegisterState extends State<RegisterScreen> {
       await Provider.of<AppAuthProvider>(context, listen: false)
           .register(emailCtrl.text, passCtrl.text);
 
-      if (!context.mounted) return;
-      Navigator.pop(context); // Go back to login screen on success
+      // We do NOT set loading to false here because the Root widget 
+      // will soon remove this screen. Setting loading to false might 
+      // trigger a rebuild that shows the button again for a split second.
+      
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Registration Failed: $e")),
-      );
-    } finally {
-      if (mounted) setState(() => loading = false);
+      if (mounted) {
+        setState(() => loading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Registration Failed: $e")),
+        );
+      }
     }
   }
 

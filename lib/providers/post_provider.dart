@@ -10,13 +10,17 @@ class PostProvider extends ChangeNotifier {
   bool loading = false;
 
   Future<void> load({bool refresh = false}) async {
-    loading = true;
-    if (refresh) notifyListeners();
+    try {
+      loading = true;
+      if (refresh) notifyListeners();
 
-    posts = await _service.fetchPosts(categoryId: categoryId);
-
-    loading = false;
-    notifyListeners();
+      posts = await _service.fetchPosts(categoryId: categoryId);
+    } catch (e) {
+      debugPrint("PostProvider load error: $e");
+    } finally {
+      loading = false;
+      notifyListeners();
+    }
   }
 
   Future<void> createPost({
