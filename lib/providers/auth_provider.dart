@@ -1,15 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../services/auth_service.dart';
-import '../models/user.dart';
 
 class AppAuthProvider extends ChangeNotifier {
   final AuthService _service = AuthService();
-
-  UserModel? _user;
+  User? _user;
   bool _isLoading = true;
-
-  UserModel? get user => _user;
-  bool get isLoading => _isLoading;
 
   AppAuthProvider() {
     _service.authStateChanges.listen((user) {
@@ -17,10 +13,10 @@ class AppAuthProvider extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     });
-    // Initial check
-    _isLoading = false;
-    notifyListeners();
   }
+
+  User? get user => _user;
+  bool get isLoading => _isLoading;
 
   Future<void> login(String email, String password) async {
     await _service.login(email, password);
@@ -32,11 +28,5 @@ class AppAuthProvider extends ChangeNotifier {
 
   Future<void> logout() async {
     await _service.logout();
-  }
-
-  Future<void> updateProfile({String? name, String? avatar}) async {
-    if (_user != null) {
-      await _service.updateProfile(uid: _user!.id, name: name, avatar: avatar);
-    }
   }
 }

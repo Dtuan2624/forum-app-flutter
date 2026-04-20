@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../models/post_model.dart';
 import '../../providers/post_provider.dart';
-import '../../providers/auth_provider.dart';
-import 'create_post_screen.dart';
-import 'post_detail_screen.dart';
+import '../../views/home/create_post_screen.dart';
+import '../../views/home/post_detail_screen.dart';
 
-class CategoryPostsScreen extends StatefulWidget {
+class CategoryPostsScreen extends StatelessWidget {
   final String categoryId;
   final String categoryName;
 
@@ -16,86 +16,110 @@ class CategoryPostsScreen extends StatefulWidget {
   });
 
   @override
-  State<CategoryPostsScreen> createState() => _CategoryPostsScreenState();
-}
-
-class _CategoryPostsScreenState extends State<CategoryPostsScreen> {
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<PostProvider>(context, listen: false).changeCategory(widget.categoryId);
-    });
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final postProvider = Provider.of<PostProvider>(context);
-    final authProvider = Provider.of<AppAuthProvider>(context);
+    final postProvider = context.read<PostProvider>();
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.categoryName),
-      ),
-      body: postProvider.loading && postProvider.posts.isEmpty
-          ? const Center(child: CircularProgressIndicator())
-          : ListView.builder(
-              itemCount: postProvider.posts.length,
-              itemBuilder: (context, i) {
-                final p = postProvider.posts[i];
-                final isOwner = p.userId == authProvider.user?.id;
-
-                return Card(
-                  margin: const EdgeInsets.all(8),
-                  child: ListTile(
-                    title: Text(p.title),
-                    subtitle: Text(p.content, maxLines: 1, overflow: TextOverflow.ellipsis),
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => PostDetailScreen(post: p),
-                        ),
-                      );
-                    },
-                    trailing: isOwner
-                        ? Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              IconButton(
-                                icon: const Icon(Icons.edit, color: Colors.blue),
-                                onPressed: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => CreatePostScreen(
-                                        categoryId: widget.categoryId,
-                                        postToEdit: p,
-                                      ),
-                                    ),
-                                  );
-                                },
-                              ),
-                              IconButton(
-                                icon: const Icon(Icons.delete, color: Colors.red),
-                                onPressed: () => postProvider.deletePost(p.id),
-                              ),
-                            ],
-                          )
-                        : null,
+      appBar: AppBar(title: Text(categoryName)),
+      body: StreamBuilder<List<PostModel>>(
+        stream: postProvider.getPostsStream(categoryId: categoryId),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          final posts = snapshot.data ?? [];
+          if (posts.isEmpty) {
+            return const Center(child: Text('No posts in this category yet.'));
+          }
+          return ListView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: posts.length,
+            itemBuilder: (context, index) {
+              final post = posts[index];
+              return Card(
+                margin: const EdgeInsets.only(bottom: 12),
+                child: ListTile(
+                  title: Text(post.title),
+                  subtitle: Text(
+                    post.content,
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                );
-              },
-            ),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => PostDetailScreen(post: post),
+                      ),
+                    );
+                  },
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.edit),
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => CreatePostScreen(
+                                post: post,
+                                categoryId: categoryId,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.delete),
+                        onPressed: () async {
+                          final postProvider = context.read<PostProvider>();
+                          final confirmed = await showDialog<bool>(
+                            context: context,
+                            builder: (context) {
+                              return AlertDialog(
+                                title: const Text('Delete Post'),
+                                content: const Text(
+                                  'Are you sure you want to delete this post?',
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () =>
+                                        Navigator.pop(context, false),
+                                    child: const Text('Cancel'),
+                                  ),
+                                  TextButton(
+                                    onPressed: () =>
+                                        Navigator.pop(context, true),
+                                    child: const Text('Delete'),
+                                  ),
+                                ],
+                              );
+                            },
+                          );
+                          if (confirmed == true) {
+                            await postProvider.deletePost(post.id);
+                          }
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          );
+        },
+      ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => CreatePostScreen(categoryId: widget.categoryId),
+              builder: (context) => CreatePostScreen(categoryId: categoryId),
             ),
           );
         },
+        tooltip: 'Create post in this category',
         child: const Icon(Icons.add),
       ),
     );

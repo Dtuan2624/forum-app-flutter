@@ -1,86 +1,93 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:image_picker/image_picker.dart';
-import '../../providers/post_provider.dart';
-import '../../providers/auth_provider.dart';
+import '../../models/category_model.dart';
 import '../../models/post_model.dart';
-import '../../widgets/app_image.dart';
+import '../../providers/auth_provider.dart';
+import '../../providers/post_provider.dart';
+import '../../services/category_service.dart';
 
 class CreatePostScreen extends StatefulWidget {
-  final String categoryId;
-  final PostModel? postToEdit;
+  final PostModel? post;
+  final String? categoryId;
 
-  const CreatePostScreen({
-    super.key,
-    required this.categoryId,
-    this.postToEdit,
-  });
+  const CreatePostScreen({super.key, this.post, this.categoryId});
 
   @override
   State<CreatePostScreen> createState() => _CreatePostScreenState();
 }
 
 class _CreatePostScreenState extends State<CreatePostScreen> {
-  final titleCtrl = TextEditingController();
-  final contentCtrl = TextEditingController();
-  XFile? image;
-  bool loading = false;
+  final _titleController = TextEditingController();
+  final _contentController = TextEditingController();
+  final CategoryService _categoryService = CategoryService();
+  bool _loading = false;
+  List<CategoryModel> _categories = [];
+  String? _selectedCategoryId;
 
   @override
   void initState() {
     super.initState();
-    if (widget.postToEdit != null) {
-      titleCtrl.text = widget.postToEdit!.title;
-      contentCtrl.text = widget.postToEdit!.content;
+    if (widget.post != null) {
+      _titleController.text = widget.post!.title;
+      _contentController.text = widget.post!.content;
+      _selectedCategoryId = widget.post!.categoryId;
+    } else {
+      _selectedCategoryId = widget.categoryId;
     }
+    _loadCategories();
   }
 
-  Future<void> pickImage() async {
-    final picked = await ImagePicker().pickImage(source: ImageSource.gallery);
-    if (picked != null) {
-      setState(() => image = picked);
-    }
+  Future<void> _loadCategories() async {
+    final categories = await _categoryService.getCategories();
+    if (!mounted) return;
+    setState(() {
+      _categories = categories;
+      if (_selectedCategoryId == null && categories.isNotEmpty) {
+        _selectedCategoryId = categories.first.id;
+      }
+    });
   }
 
-  Future<void> submit() async {
-    if (titleCtrl.text.isEmpty || contentCtrl.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please fill all fields")),
-      );
+  Future<void> _save() async {
+    final title = _titleController.text.trim();
+    final content = _contentController.text.trim();
+    final categoryId = _selectedCategoryId;
+    if (title.isEmpty || content.isEmpty || categoryId == null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('All fields are required')));
       return;
     }
 
-    setState(() => loading = true);
-
-    final postProvider = Provider.of<PostProvider>(context, listen: false);
-    final authProvider = Provider.of<AppAuthProvider>(context, listen: false);
-
+    setState(() => _loading = true);
     try {
-      if (widget.postToEdit == null) {
+      final authProvider = context.read<AppAuthProvider>();
+      final postProvider = context.read<PostProvider>();
+      final userId = authProvider.user?.uid ?? 'anonymous';
+      if (widget.post == null) {
         await postProvider.createPost(
-          title: titleCtrl.text,
-          content: contentCtrl.text,
-          categoryId: widget.categoryId,
-          userId: authProvider.user!.id,
-          image: image, // Pass XFile directly
+          title: title,
+          content: content,
+          categoryId: categoryId,
+          userId: userId,
         );
       } else {
         await postProvider.updatePost(
-          postId: widget.postToEdit!.id,
-          title: titleCtrl.text,
-          content: contentCtrl.text,
-          image: image, // Pass XFile directly
-          existingImageUrl: widget.postToEdit!.imageUrl,
+          id: widget.post!.id,
+          title: title,
+          content: content,
+          categoryId: categoryId,
         );
       }
       if (mounted) Navigator.pop(context);
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error: $e")),
-      );
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Could not save post: $error')));
+      }
     } finally {
-      if (mounted) setState(() => loading = false);
+      if (mounted) setState(() => _loading = false);
     }
   }
 
@@ -88,45 +95,52 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.postToEdit == null ? "Create Post" : "Edit Post"),
+        title: Text(widget.post == null ? 'Create Post' : 'Edit Post'),
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            TextField(
-              controller: titleCtrl,
-              decoration: const InputDecoration(labelText: "Title"),
-            ),
-            const SizedBox(height: 10),
-            TextField(
-              controller: contentCtrl,
-              maxLines: 5,
-              decoration: const InputDecoration(labelText: "Content"),
-            ),
-            const SizedBox(height: 20),
-            GestureDetector(
-              onTap: pickImage,
-              child: Container(
-                height: 200,
-                width: double.infinity,
-                color: Colors.grey.shade200,
-                child: image != null
-                    ? AppImage(imageUrl: image!.path, fit: BoxFit.cover)
-                    : (widget.postToEdit?.imageUrl != null
-                        ? AppImage(imageUrl: widget.postToEdit!.imageUrl, fit: BoxFit.cover)
-                        : const Icon(Icons.add_a_photo, size: 50)),
+        padding: const EdgeInsets.all(20),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 600),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              TextField(
+                controller: _titleController,
+                decoration: const InputDecoration(labelText: 'Title'),
               ),
-            ),
-            const SizedBox(height: 20),
-            loading
-                ? const CircularProgressIndicator()
-                : ElevatedButton(
-                    onPressed: submit,
-                    style: ElevatedButton.styleFrom(minimumSize: const Size(double.infinity, 50)),
-                    child: Text(widget.postToEdit == null ? "Post" : "Update"),
-                  ),
-          ],
+              const SizedBox(height: 16),
+              TextField(
+                controller: _contentController,
+                decoration: const InputDecoration(labelText: 'Content'),
+                minLines: 4,
+                maxLines: 8,
+              ),
+              const SizedBox(height: 16),
+              DropdownButtonFormField<String>(
+                initialValue: _selectedCategoryId,
+                decoration: const InputDecoration(labelText: 'Category'),
+                items: _categories
+                    .map(
+                      (category) => DropdownMenuItem(
+                        value: category.id,
+                        child: Text(category.name),
+                      ),
+                    )
+                    .toList(),
+                onChanged: (value) =>
+                    setState(() => _selectedCategoryId = value),
+              ),
+              const SizedBox(height: 24),
+              _loading
+                  ? const Center(child: CircularProgressIndicator())
+                  : ElevatedButton(
+                      onPressed: _save,
+                      child: Text(
+                        widget.post == null ? 'Create Post' : 'Update Post',
+                      ),
+                    ),
+            ],
+          ),
         ),
       ),
     );

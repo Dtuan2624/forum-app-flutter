@@ -5,26 +5,31 @@ class CategoryService {
   final _db = FirebaseFirestore.instance;
 
   Stream<List<CategoryModel>> getCategoriesStream() {
-    // Your screenshot showed 'categories' and 'topics'. 
-    // Using 'categories' as shown in the middle panel of your screenshot.
-    return _db.collection('categories').snapshots().map((snapshot) {
-      return snapshot.docs.map((doc) {
-        return CategoryModel(
-          id: doc.id,
-          name: doc['name'] ?? '',
+    return _db
+        .collection('categories')
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .map(
+          (snapshot) => snapshot.docs.map((doc) {
+            return CategoryModel.fromMap(doc.id, doc.data());
+          }).toList(),
         );
-      }).toList();
-    });
   }
 
   Future<List<CategoryModel>> getCategories() async {
-    final snapshot = await _db.collection('categories').get();
-    return snapshot.docs.map((doc) {
-      return CategoryModel(
-        id: doc.id,
-        name: doc['name'] ?? '',
-      );
-    }).toList();
+    final snapshot = await _db
+        .collection('categories')
+        .orderBy('createdAt', descending: true)
+        .get();
+    return snapshot.docs
+        .map((doc) => CategoryModel.fromMap(doc.id, doc.data()))
+        .toList();
+  }
+
+  Future<CategoryModel?> getCategoryById(String id) async {
+    final doc = await _db.collection('categories').doc(id).get();
+    if (!doc.exists) return null;
+    return CategoryModel.fromMap(doc.id, doc.data()!);
   }
 
   Future<void> createCategory(String name) async {
@@ -35,9 +40,7 @@ class CategoryService {
   }
 
   Future<void> updateCategory(String id, String name) async {
-    await _db.collection('categories').doc(id).update({
-      'name': name,
-    });
+    await _db.collection('categories').doc(id).update({'name': name});
   }
 
   Future<void> deleteCategory(String id) async {

@@ -1,26 +1,16 @@
 import 'package:flutter/material.dart';
-import '../services/post_service.dart';
 import '../models/post_model.dart';
+import '../services/post_service.dart';
 
 class PostProvider extends ChangeNotifier {
   final PostService _service = PostService();
 
-  List<PostModel> posts = [];
-  String? categoryId;
-  bool loading = false;
+  Stream<List<PostModel>> getPostsStream({String? categoryId}) {
+    return _service.getPostsStream(categoryId: categoryId);
+  }
 
-  Future<void> load({bool refresh = false}) async {
-    try {
-      loading = true;
-      if (refresh) notifyListeners();
-
-      posts = await _service.fetchPosts(categoryId: categoryId);
-    } catch (e) {
-      debugPrint("PostProvider load error: $e");
-    } finally {
-      loading = false;
-      notifyListeners();
-    }
+  Future<List<PostModel>> getPosts({String? categoryId}) {
+    return _service.getPosts(categoryId: categoryId);
   }
 
   Future<void> createPost({
@@ -28,44 +18,30 @@ class PostProvider extends ChangeNotifier {
     required String content,
     required String categoryId,
     required String userId,
-    dynamic image,
   }) async {
     await _service.createPost(
       title: title,
       content: content,
       categoryId: categoryId,
       userId: userId,
-      image: image,
     );
-    await load();
   }
 
   Future<void> updatePost({
-    required String postId,
+    required String id,
     required String title,
     required String content,
-    String? categoryId,
-    dynamic image,
-    String? existingImageUrl,
+    required String categoryId,
   }) async {
     await _service.updatePost(
-      postId: postId,
+      id: id,
       title: title,
       content: content,
       categoryId: categoryId,
-      image: image,
-      existingImageUrl: existingImageUrl,
     );
-    await load();
   }
 
-  Future<void> deletePost(String postId) async {
-    await _service.deletePost(postId);
-    await load();
-  }
-
-  void changeCategory(String? id) {
-    categoryId = id;
-    load();
+  Future<void> deletePost(String id) async {
+    await _service.deletePost(id);
   }
 }

@@ -1,11 +1,12 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 class PostModel {
   final String id;
   final String title;
   final String content;
   final String categoryId;
   final String userId;
-  final String? imageUrl;
-  final DateTime createdAt;
+  final DateTime? createdAt;
 
   PostModel({
     required this.id,
@@ -13,23 +14,25 @@ class PostModel {
     required this.content,
     required this.categoryId,
     required this.userId,
-    this.imageUrl,
-    required this.createdAt,
+    this.createdAt,
   });
 
-  PostModel copyWith({
-    String? title,
-    String? content,
-    String? categoryId,
-    String? imageUrl,
-  }) {
+  factory PostModel.fromMap(String id, Map<String, dynamic> data) {
+    final createdAtValue = data['createdAt'];
+    DateTime? createdAt;
+    if (createdAtValue is Timestamp) {
+      createdAt = createdAtValue.toDate();
+    } else if (createdAtValue is DateTime) {
+      createdAt = createdAtValue;
+    } else if (createdAtValue is int) {
+      createdAt = DateTime.fromMillisecondsSinceEpoch(createdAtValue);
+    }
     return PostModel(
       id: id,
-      title: title ?? this.title,
-      content: content ?? this.content,
-      categoryId: categoryId ?? this.categoryId,
-      userId: userId,
-      imageUrl: imageUrl ?? this.imageUrl,
+      title: data['title'] as String? ?? '',
+      content: data['content'] as String? ?? '',
+      categoryId: data['categoryId'] as String? ?? '',
+      userId: data['userId'] as String? ?? '',
       createdAt: createdAt,
     );
   }

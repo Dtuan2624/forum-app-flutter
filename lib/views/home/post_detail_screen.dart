@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../models/comment_model.dart';
 import '../../models/post_model.dart';
-import '../../providers/comment_provider.dart';
 import '../../providers/auth_provider.dart';
-import '../../widgets/app_image.dart';
+import '../../providers/comment_provider.dart';
+import '../../providers/category_provider.dart';
+import 'create_post_screen.dart';
 
 class PostDetailScreen extends StatefulWidget {
   final PostModel post;
@@ -15,191 +17,245 @@ class PostDetailScreen extends StatefulWidget {
 }
 
 class _PostDetailScreenState extends State<PostDetailScreen> {
-  final commentCtrl = TextEditingController();
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<CommentProvider>(context, listen: false).fetchComments(widget.post.id);
-    });
-  }
+  final TextEditingController _commentController = TextEditingController();
+  String? _replyToId;
+  String? _replyToText;
+  bool _sendingComment = false;
 
   @override
   void dispose() {
-    commentCtrl.dispose();
+    _commentController.dispose();
     super.dispose();
   }
 
-  Future<void> _submitComment() async {
-    if (commentCtrl.text.trim().isEmpty) return;
-
-    final authProvider = Provider.of<AppAuthProvider>(context, listen: false);
-    final commentProvider = Provider.of<CommentProvider>(context, listen: false);
-
-    try {
-      await commentProvider.addComment(
-        postId: widget.post.id,
-        userId: authProvider.user!.id,
-        userName: authProvider.user!.name,
-        content: commentCtrl.text.trim(),
-      );
-      commentCtrl.clear();
-      FocusScope.of(context).unfocus();
-    } catch (e) {
+  Future<void> _sendComment() async {
+    final text = _commentController.text.trim();
+    if (text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error adding comment: $e")),
+        const SnackBar(content: Text('Add a comment before sending.')),
       );
+      return;
     }
+
+    final authProvider = context.read<AppAuthProvider>();
+    final userId = authProvider.user?.uid ?? 'anonymous';
+
+    final messenger = ScaffoldMessenger.of(context);
+    setState(() => _sendingComment = true);
+    try {
+      await context.read<CommentProvider>().createComment(
+        postId: widget.post.id,
+        userId: userId,
+        text: text,
+        parentCommentId: _replyToId,
+      );
+      _commentController.clear();
+      setState(() {
+        _replyToId = null;
+        _replyToText = null;
+      });
+    } catch (error) {
+      messenger.showSnackBar(
+        SnackBar(content: Text('Could not send comment: $error')),
+      );
+    } finally {
+      if (mounted) setState(() => _sendingComment = false);
+    }
+  }
+
+  Widget _buildCommentCard(CommentModel comment, List<CommentModel> replies) {
+    return Card(
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(
+                    comment.text,
+                    style: const TextStyle(fontSize: 16),
+                  ),
+                ),
+                Text(
+                  comment.createdAt != null
+                      ? '${comment.createdAt!.toLocal()}'
+                      : '',
+                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                TextButton(
+                  onPressed: () {
+                    setState(() {
+                      _replyToId = comment.id;
+                      _replyToText = comment.text;
+                    });
+                    FocusScope.of(context).requestFocus(FocusNode());
+                  },
+                  child: const Text('Reply'),
+                ),
+              ],
+            ),
+            if (replies.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 8.0, left: 16.0),
+                child: Column(
+                  children: replies
+                      .map(
+                        (reply) => ListTile(
+                          visualDensity: const VisualDensity(vertical: -2),
+                          title: Text(reply.text),
+                          subtitle: reply.createdAt != null
+                              ? Text(reply.createdAt!.toLocal().toString())
+                              : null,
+                        ),
+                      )
+                      .toList(),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final commentProvider = Provider.of<CommentProvider>(context);
-    final authProvider = Provider.of<AppAuthProvider>(context);
+    final categoryProvider = context.read<CategoryProvider>();
+    final commentProvider = context.watch<CommentProvider>();
 
     return Scaffold(
-      appBar: AppBar(title: const Text("Post Detail")),
-      body: Column(
-        children: [
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (widget.post.imageUrl != null && widget.post.imageUrl!.isNotEmpty)
-                    GestureDetector(
-                      onTap: () {
-                        // Optional: Full screen view logic
-                        showDialog(
-                          context: context,
-                          builder: (context) => Dialog.fullscreen(
-                            backgroundColor: Colors.black,
-                            child: Stack(
-                              children: [
-                                InteractiveViewer(
-                                  child: Center(
-                                    child: AppImage(
-                                      imageUrl: widget.post.imageUrl!,
-                                      fit: BoxFit.contain,
-                                    ),
-                                  ),
-                                ),
-                                Positioned(
-                                  top: 10,
-                                  right: 10,
-                                  child: IconButton(
-                                    icon: const Icon(Icons.close, color: Colors.white, size: 30),
-                                    onPressed: () => Navigator.pop(context),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: AppImage(
-                          imageUrl: widget.post.imageUrl!,
-                          width: double.infinity,
-                          // Removed fixed height to allow full aspect ratio display
-                          fit: BoxFit.fitWidth, 
-                        ),
-                      ),
-                    ),
-                  const SizedBox(height: 20),
-                  Text(
-                    widget.post.title,
-                    style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+      appBar: AppBar(
+        title: const Text('Post details'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.edit),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => CreatePostScreen(
+                    post: widget.post,
+                    categoryId: widget.post.categoryId,
                   ),
-                  const SizedBox(height: 10),
-                  Text(
-                    "Posted on ${widget.post.createdAt.day}/${widget.post.createdAt.month}/${widget.post.createdAt.year}",
-                    style: const TextStyle(color: Colors.grey),
-                  ),
-                  const Divider(height: 30),
-                  Text(
-                    widget.post.content,
-                    style: const TextStyle(fontSize: 18, height: 1.5),
-                  ),
-                  const SizedBox(height: 40),
-                  const Text(
-                    "Comments",
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                  ),
-                  const Divider(),
-                  if (commentProvider.isLoading)
-                    const Center(child: CircularProgressIndicator())
-                  else if (commentProvider.comments.isEmpty)
-                    const Padding(
-                      padding: EdgeInsets.all(20.0),
-                      child: Text("No comments yet.", style: TextStyle(color: Colors.grey)),
-                    )
-                  else
-                    ListView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: commentProvider.comments.length,
-                      itemBuilder: (context, index) {
-                        final comment = commentProvider.comments[index];
-                        final isOwner = comment.userId == authProvider.user?.id;
-                        
-                        return ListTile(
-                          contentPadding: EdgeInsets.zero,
-                          title: Text(comment.userName, style: const TextStyle(fontWeight: FontWeight.bold)),
-                          subtitle: Text(comment.content),
-                          trailing: isOwner 
-                            ? IconButton(
-                                icon: const Icon(Icons.delete_outline, size: 20, color: Colors.red),
-                                onPressed: () => commentProvider.deleteComment(comment.id, widget.post.id),
-                              )
-                            : Text(
-                                "${comment.createdAt.hour}:${comment.createdAt.minute.toString().padLeft(2, '0')}",
-                                style: const TextStyle(fontSize: 12, color: Colors.grey),
-                              ),
-                        );
-                      },
-                    ),
-                ],
-              ),
-            ),
-          ),
-          // Comment Input Section
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.grey.withOpacity(0.2),
-                  blurRadius: 5,
-                  offset: const Offset(0, -2),
-                )
-              ],
-            ),
-            child: SafeArea(
-              child: Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: commentCtrl,
-                      decoration: const InputDecoration(
-                        hintText: "Write a comment...",
-                        border: InputBorder.none,
-                      ),
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.send, color: Colors.blue),
-                    onPressed: _submitComment,
-                  ),
-                ],
-              ),
-            ),
+                ),
+              );
+            },
           ),
         ],
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                widget.post.title,
+                style: Theme.of(context).textTheme.headlineSmall,
+              ),
+              const SizedBox(height: 8),
+              FutureBuilder(
+                future: categoryProvider.getCategoryById(
+                  widget.post.categoryId,
+                ),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Text('Loading category...');
+                  }
+                  final category = snapshot.data;
+                  return Text(
+                    category != null
+                        ? 'Category: ${category.name}'
+                        : 'Category: ${widget.post.categoryId}',
+                    style: const TextStyle(color: Colors.grey),
+                  );
+                },
+              ),
+              const SizedBox(height: 12),
+              Text(widget.post.content, style: const TextStyle(fontSize: 16)),
+              const SizedBox(height: 24),
+              const Text(
+                'Comments',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 12),
+              StreamBuilder<List<CommentModel>>(
+                stream: commentProvider.getCommentsStream(widget.post.id),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+
+                  final comments = snapshot.data ?? [];
+                  final topLevel = comments
+                      .where((comment) => comment.parentCommentId == null)
+                      .toList();
+                  final replies = comments
+                      .where((comment) => comment.parentCommentId != null)
+                      .toList();
+
+                  if (comments.isEmpty) {
+                    return const Text(
+                      'No comments yet. Start the conversation.',
+                    );
+                  }
+
+                  return Column(
+                    children: topLevel.map((comment) {
+                      final nestedReplies = replies
+                          .where((reply) => reply.parentCommentId == comment.id)
+                          .toList();
+                      return _buildCommentCard(comment, nestedReplies);
+                    }).toList(),
+                  );
+                },
+              ),
+              const SizedBox(height: 24),
+              if (_replyToText != null)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  child: Row(
+                    children: [
+                      Expanded(child: Text('Replying to: "$_replyToText"')),
+                      IconButton(
+                        onPressed: () {
+                          setState(() {
+                            _replyToId = null;
+                            _replyToText = null;
+                          });
+                        },
+                        icon: const Icon(Icons.close),
+                      ),
+                    ],
+                  ),
+                ),
+              TextField(
+                controller: _commentController,
+                decoration: const InputDecoration(
+                  labelText: 'Write a comment',
+                  border: OutlineInputBorder(),
+                ),
+                minLines: 2,
+                maxLines: 4,
+              ),
+              const SizedBox(height: 12),
+              _sendingComment
+                  ? const Center(child: CircularProgressIndicator())
+                  : ElevatedButton(
+                      onPressed: _sendComment,
+                      child: const Text('Post comment'),
+                    ),
+            ],
+          ),
+        ),
       ),
     );
   }

@@ -1,290 +1,219 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../providers/auth_provider.dart';
-import '../../models/post_model.dart';
 import '../../models/category_model.dart';
-import '../../services/post_service.dart';
-import '../../services/category_service.dart';
+import '../../models/post_model.dart';
+import '../../providers/auth_provider.dart';
+import '../../providers/category_provider.dart';
+import '../../providers/post_provider.dart';
 import 'category_posts_screen.dart';
-import 'post_detail_screen.dart';
+import 'create_category_screen.dart';
 import 'create_post_screen.dart';
-import '../profile/profile_screen.dart';
+import 'post_detail_screen.dart';
 
-class HomeScreen extends StatefulWidget {
+class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
-}
-
-class _HomeScreenState extends State<HomeScreen> {
-  final PostService _postService = PostService();
-  final CategoryService _categoryService = CategoryService();
-
-  @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final authProvider = context.watch<AppAuthProvider>();
+    final categoryProvider = context.read<CategoryProvider>();
+    final postProvider = context.read<PostProvider>();
 
     return Scaffold(
-      backgroundColor: Colors.black,
-      body: SafeArea(
-        child: Column(
-          children: [
-            // Header: MY FORUM
-            Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: Row(
-                children: [
-                  const Icon(Icons.menu, color: Colors.white, size: 32),
-                  const SizedBox(width: 16),
-                  const Text(
-                    "MY FORUM",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 32,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 2,
-                    ),
+      appBar: AppBar(
+        title: const Text('Forum'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.add_circle_outline),
+            tooltip: 'Create category',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const CreateCategoryScreen(),
+                ),
+              );
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.logout),
+            tooltip: 'Logout',
+            onPressed: () async {
+              await authProvider.logout();
+              if (context.mounted) {
+                Navigator.popUntil(context, (route) => route.isFirst);
+              }
+            },
+          ),
+        ],
+      ),
+      body: Row(
+        children: [
+          Container(
+            width: 280,
+            decoration: BoxDecoration(
+              border: Border(right: BorderSide(color: Colors.grey.shade300)),
+            ),
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16.0,
+                    vertical: 16.0,
                   ),
-                  const Spacer(),
-                  IconButton(
-                    icon: const CircleAvatar(
-                      radius: 18,
-                      backgroundColor: Color(0xFF1E1E1E),
-                      child: Icon(Icons.person, color: Colors.white),
-                    ),
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => const ProfileScreen()),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: const [
+                      Text(
+                        'Categories',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: StreamBuilder<List<CategoryModel>>(
+                    stream: categoryProvider.categoriesStream,
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
+                      final categories = snapshot.data ?? [];
+                      if (categories.isEmpty) {
+                        return const Center(
+                          child: Text('No categories yet. Add one with +'),
+                        );
+                      }
+                      return ListView.builder(
+                        itemCount: categories.length,
+                        itemBuilder: (context, index) {
+                          final category = categories[index];
+                          return ListTile(
+                            title: Text(category.name),
+                            subtitle: category.createdAt != null
+                                ? Text(category.createdAt!.toLocal().toString())
+                                : null,
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => CategoryPostsScreen(
+                                    categoryId: category.id,
+                                    categoryName: category.name,
+                                  ),
+                                ),
+                              );
+                            },
+                          );
+                        },
                       );
                     },
                   ),
-                ],
-              ),
-            ),
-
-            // Search Bar Area
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24.0),
-              child: Container(
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.purple.shade900, width: 2),
                 ),
-                child: Row(
-                  children: [
-                    const Spacer(),
-                    Container(
-                      height: 40,
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      color: Colors.white,
-                      child: DropdownButton<String>(
-                        value: "Everything",
-                        underline: const SizedBox(),
-                        items: ["Everything"]
-                            .map((e) => DropdownMenuItem(
-                                  value: e,
-                                  child: Text(e, style: const TextStyle(color: Colors.black)),
-                                ))
-                            .toList(),
-                        onChanged: (_) {},
-                      ),
-                    ),
-                    Container(
-                      width: 200,
-                      height: 40,
-                      color: Colors.white,
-                      child: const TextField(
-                        style: TextStyle(color: Colors.black),
-                        decoration: InputDecoration(
-                          hintText: "search...",
-                          hintStyle: TextStyle(color: Colors.grey),
-                          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                          border: InputBorder.none,
-                          enabledBorder: InputBorder.none,
-                          focusedBorder: InputBorder.none,
+              ],
+            ),
+          ),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Padding(
+                  padding: EdgeInsets.all(16.0),
+                  child: Text(
+                    'Latest posts',
+                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                  ),
+                ),
+                Expanded(
+                  child: StreamBuilder<List<PostModel>>(
+                    stream: postProvider.getPostsStream(),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
+                      final posts = snapshot.data ?? [];
+                      if (posts.isEmpty) {
+                        return const Center(
+                          child: Text('No posts yet. Create the first post!'),
+                        );
+                      }
+                      return ListView.builder(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16.0,
+                          vertical: 8.0,
                         ),
-                      ),
-                    ),
-                    Container(
-                      height: 40,
-                      width: 40,
-                      color: Colors.white,
-                      child: const Icon(Icons.search, color: Colors.black),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 32),
-
-            // Forum Content
-            Expanded(
-              child: StreamBuilder<List<CategoryModel>>(
-                stream: _categoryService.getCategoriesStream(),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-                  if (snapshot.hasError) {
-                    return Center(child: Text("Error: ${snapshot.error}", style: const TextStyle(color: Colors.red)));
-                  }
-                  final categories = snapshot.data ?? [];
-
-                  return ListView.builder(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    itemCount: categories.length,
-                    itemBuilder: (context, index) {
-                      final cat = categories[index];
-                      return _buildCategorySection(cat);
+                        itemCount: posts.length,
+                        itemBuilder: (context, index) {
+                          final post = posts[index];
+                          return Card(
+                            margin: const EdgeInsets.only(bottom: 12),
+                            child: ListTile(
+                              title: Text(post.title),
+                              subtitle: Text(
+                                post.content,
+                                maxLines: 3,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        PostDetailScreen(post: post),
+                                  ),
+                                );
+                              },
+                              trailing: IconButton(
+                                icon: const Icon(Icons.edit),
+                                onPressed: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => CreatePostScreen(
+                                        post: post,
+                                        categoryId: post.categoryId,
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                          );
+                        },
+                      );
                     },
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-           // Opening CreatePost with the first available category as default
-           _categoryService.getCategories().then((list) {
-             if (list.isNotEmpty) {
-               Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => CreatePostScreen(categoryId: list.first.id),
+                  ),
                 ),
-              );
-             }
-           });
-        },
-        label: const Text("NEW POST"),
-        icon: const Icon(Icons.add),
-        backgroundColor: Colors.red,
-      ),
-    );
-  }
-
-  Widget _buildCategorySection(CategoryModel cat) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-          decoration: const BoxDecoration(
-            color: Color(0xFF2D2D2D),
-          ),
-          child: Text(
-            cat.name,
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-              fontStyle: FontStyle.italic,
+              ],
             ),
           ),
-        ),
-        _buildForumItem(
-          catId: cat.id,
-          catName: cat.name,
-          icon: Icons.forum_rounded,
-          title: cat.name,
-          content: "Discuss everything about ${cat.name} here.",
-          posts: 0, // In a real app, you'd aggregate these
-          topics: 0,
-          lastPostBy: "...",
-          lastPostDate: "...",
-          onTap: () {
-             Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => CategoryPostsScreen(
-                  categoryId: cat.id,
-                  categoryName: cat.name,
-                ),
+        ],
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () async {
+          final messenger = ScaffoldMessenger.of(context);
+          final navigator = Navigator.of(context);
+          final categories = await categoryProvider.getCategories();
+          if (categories.isEmpty) {
+            messenger.showSnackBar(
+              const SnackBar(
+                content: Text('Create a category before adding posts.'),
               ),
             );
+            return;
           }
-        ),
-        const SizedBox(height: 24),
-      ],
-    );
-  }
-
-  Widget _buildForumItem({
-    required String catId,
-    required String catName,
-    required IconData icon,
-    required String title,
-    required String content,
-    required int posts,
-    required int topics,
-    required String lastPostBy,
-    required String lastPostDate,
-    VoidCallback? onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: const BoxDecoration(
-          color: Color(0xFF1E1E1E),
-          border: Border(bottom: BorderSide(color: Colors.black, width: 2)),
-        ),
-        child: Row(
-          children: [
-            Icon(icon, color: Colors.white, size: 40),
-            const SizedBox(width: 16),
-            Expanded(
-              flex: 4,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 16),
-                  ),
-                  Text(
-                    content,
-                    style: const TextStyle(color: Colors.white70, fontSize: 13, fontStyle: FontStyle.italic),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
+          navigator.push(
+            MaterialPageRoute(
+              builder: (context) =>
+                  CreatePostScreen(categoryId: categories.first.id),
             ),
-            const SizedBox(width: 8),
-            // Dynamic data could be loaded here based on catId
-            Expanded(
-              flex: 1,
-              child: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: const BoxDecoration(
-                  border: Border(left: BorderSide(color: Colors.black45), right: BorderSide(color: Colors.black45)),
-                ),
-                child: Text(
-                  "Stats",
-                  style: const TextStyle(color: Colors.white, fontSize: 12),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              flex: 2,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text("Category View", style: TextStyle(color: Colors.red, fontSize: 12, fontWeight: FontWeight.bold)),
-                  const Text("Click to open", style: TextStyle(color: Colors.white, fontSize: 12)),
-                ],
-              ),
-            ),
-          ],
-        ),
+          );
+        },
+        tooltip: 'Create post',
+        child: const Icon(Icons.add),
       ),
     );
   }
