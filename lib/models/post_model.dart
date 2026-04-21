@@ -6,6 +6,8 @@ class PostModel {
   final String content;
   final String categoryId;
   final String userId;
+  final String? imageUrl;
+  final List<String> likes; // Danh sách ID người dùng đã like
   final DateTime? createdAt;
 
   PostModel({
@@ -14,6 +16,8 @@ class PostModel {
     required this.content,
     required this.categoryId,
     required this.userId,
+    this.imageUrl,
+    this.likes = const [],
     this.createdAt,
   });
 
@@ -27,12 +31,15 @@ class PostModel {
     } else if (createdAtValue is int) {
       createdAt = DateTime.fromMillisecondsSinceEpoch(createdAtValue);
     }
+    
     return PostModel(
       id: id,
       title: data['title'] as String? ?? '',
       content: data['content'] as String? ?? '',
       categoryId: data['categoryId'] as String? ?? '',
       userId: data['userId'] as String? ?? '',
+      imageUrl: data['imageUrl'] as String?,
+      likes: List<String>.from(data['likes'] ?? []),
       createdAt: createdAt,
     );
   }
