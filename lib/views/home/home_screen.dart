@@ -1,6 +1,7 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:velocity_x/velocity_x.dart';
 import '../../models/category_model.dart';
 import '../../models/post_model.dart';
 import '../../providers/auth_provider.dart';
@@ -11,6 +12,8 @@ import 'category_posts_screen.dart';
 import 'create_post_screen.dart';
 import 'post_detail_screen.dart';
 import 'create_category_screen.dart';
+import '../../services/quote_service.dart';
+import 'package:shimmer/shimmer.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -31,7 +34,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<String> _getUserName(String userId) async {
     try {
-      final doc = await FirebaseFirestore.instance.collection('nguoi_dung').doc(userId).get();
+      final doc = await FirebaseFirestore.instance
+          .collection('nguoi_dung')
+          .doc(userId)
+          .get();
       return doc.data()?['displayName'] ?? 'Thành viên mới';
     } catch (e) {
       return 'Ẩn danh';
@@ -47,180 +53,423 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Forum'),
+        title: 'Forum'.text.xl2.bold.make(),
         actions: [
           IconButton(
             icon: const Icon(Icons.person),
             tooltip: 'Trang cá nhân',
-            onPressed: () {
-              Navigator.push(context, MaterialPageRoute(builder: (context) => const ProfileScreen()));
-            },
+            onPressed: () => context.nextPage(const ProfileScreen()),
           ),
           IconButton(
             icon: const Icon(Icons.add_circle_outline),
             tooltip: 'Tạo danh mục',
-            onPressed: () {
-              Navigator.push(context, MaterialPageRoute(builder: (context) => const CreateCategoryScreen()));
-            },
+            onPressed: () => context.nextPage(const CreateCategoryScreen()),
           ),
           IconButton(
             icon: const Icon(Icons.logout),
             tooltip: 'Đăng xuất',
             onPressed: () async {
               await authProvider.logout();
-              if (context.mounted) Navigator.popUntil(context, (route) => route.isFirst);
+              if (context.mounted)
+                Navigator.popUntil(context, (route) => route.isFirst);
             },
           ),
         ],
       ),
-      body: Row(
-        children: [
-          // Sidebar
-          Container(
-            width: 280,
-            decoration: BoxDecoration(border: Border(right: BorderSide(color: Colors.grey.shade300))),
-            child: Column(
-              children: [
-                const Padding(
-                  padding: EdgeInsets.all(16.0),
-                  child: Align(alignment: Alignment.centerLeft, child: Text('Danh mục', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold))),
-                ),
-                Expanded(
-                  child: StreamBuilder<List<CategoryModel>>(
-                    stream: categoryProvider.categoriesStream,
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
-                      final categories = snapshot.data ?? [];
-                      return ListView.builder(
-                        itemCount: categories.length,
-                        itemBuilder: (context, index) {
-                          final category = categories[index];
-                          return ListTile(
-                            leading: const Icon(Icons.folder_open),
-                            title: Text(category.name),
-                            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => CategoryPostsScreen(categoryId: category.id, categoryName: category.name))),
-                          );
-                        },
+      body: HStack([
+        // Sidebar
+        VStack([
+          'Danh mục'.text.xl.bold.make().p16(),
+          StreamBuilder<List<CategoryModel>>(
+            stream: categoryProvider.categoriesStream,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return Shimmer.fromColors(
+                  baseColor: Colors.grey[300]!,
+                  highlightColor: Colors.grey[100]!,
+                  child: ListView.builder(
+                    itemCount: 6,
+                    itemBuilder: (context, index) {
+                      return Container(
+                        margin: const EdgeInsets.symmetric(
+                          vertical: 8,
+                          horizontal: 16,
+                        ),
+                        height: 50,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 40,
+                              height: 40,
+                              margin: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.grey[300],
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                            ),
+                            Expanded(
+                              child: Container(
+                                height: 16,
+                                margin: const EdgeInsets.only(right: 8),
+                                decoration: BoxDecoration(
+                                  color: Colors.grey[300],
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       );
                     },
                   ),
-                ),
-              ],
-            ),
-          ),
-          // Posts
-          Expanded(
-            child: Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Row(
-                    children: [
-                      const Text('Bài viết mới nhất', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-                      const SizedBox(width: 24),
-                      Expanded(
-                        child: TextField(
-                          controller: _searchController,
-                          decoration: InputDecoration(
-                            hintText: 'Tìm kiếm bài viết...',
-                            prefixIcon: const Icon(Icons.search),
-                            suffixIcon: _searchQuery.isNotEmpty ? IconButton(icon: const Icon(Icons.clear), onPressed: () { _searchController.clear(); setState(() => _searchQuery = ''); }) : null,
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(30)),
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 20),
-                          ),
-                          onChanged: (value) => setState(() => _searchQuery = value),
-                        ),
+                );
+              }
+              final categories = snapshot.data ?? [];
+              return ListView.builder(
+                itemCount: categories.length,
+                itemBuilder: (context, index) {
+                  final category = categories[index];
+                  return ListTile(
+                    leading: const Icon(Icons.folder_open),
+                    title: category.name.text.make(),
+                    onTap: () => context.nextPage(
+                      CategoryPostsScreen(
+                        categoryId: category.id,
+                        categoryName: category.name,
                       ),
-                    ],
+                    ),
+                  ).box.roundedSM.make();
+                },
+              ).expand();
+            },
+          ).expand(),
+        ]).box.width(280).border(color: Theme.of(context).dividerColor).make(),
+
+        // Posts
+        VStack([
+          // Quote of the day
+          FutureBuilder<Map<String, dynamic>?>(
+            future: QuoteService.fetchRandomQuote(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return Shimmer.fromColors(
+                  baseColor: Colors.grey[300]!,
+                  highlightColor: Colors.grey[100]!,
+                  child: Container(
+                    margin: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.shade50,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Column(
+                      children: [
+                        Container(
+                          height: 20,
+                          width: double.infinity,
+                          decoration: BoxDecoration(
+                            color: Colors.grey[300],
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Container(
+                          height: 20,
+                          width: 200,
+                          decoration: BoxDecoration(
+                            color: Colors.grey[300],
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Container(
+                          height: 16,
+                          width: 100,
+                          decoration: BoxDecoration(
+                            color: Colors.grey[300],
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
+                );
+              }
+              final quote = snapshot.data;
+              if (quote != null) {
+                return VStack([
+                  '"${quote['content']}"'.text.italic.lg.makeCentered(),
+                  '- ${quote['author']}'.text.sm.gray600.makeCentered(),
+                ]).p16().card.color(Colors.blue.shade50).make();
+              }
+              return const SizedBox.shrink();
+            },
+          ),
+
+          HStack([
+            'Bài viết mới nhất'.text.xl2.bold.make().expand(),
+            24.widthBox,
+            TextField(
+              controller: _searchController,
+              decoration: InputDecoration(
+                hintText: 'Tìm kiếm bài viết...',
+                prefixIcon: const Icon(Icons.search),
+                suffixIcon: _searchQuery.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear),
+                        onPressed: () {
+                          _searchController.clear();
+                          setState(() => _searchQuery = '');
+                        },
+                      )
+                    : null,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(30),
                 ),
-                Expanded(
-                  child: StreamBuilder<List<PostModel>>(
-                    stream: _searchQuery.isEmpty ? postProvider.getPostsStream() : postProvider.searchPosts(_searchQuery),
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
-                      final posts = snapshot.data ?? [];
-                      if (posts.isEmpty) return Center(child: Text(_searchQuery.isEmpty ? 'Chưa có bài viết nào.' : 'Không tìm thấy bài viết cho "$_searchQuery"'));
-                      
-                      return ListView.builder(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        itemCount: posts.length,
-                        itemBuilder: (context, index) {
-                          final post = posts[index];
-                          final isOwner = post.userId == currentUserId;
-                          final isLiked = currentUserId != null && post.likes.contains(currentUserId);
-                          
-                          return Card(
-                            margin: const EdgeInsets.only(bottom: 12),
-                            child: Column(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 20),
+              ),
+              onChanged: (value) => setState(() => _searchQuery = value),
+            ).expand(flex: 2),
+          ]).p16(),
+
+          StreamBuilder<List<PostModel>>(
+            stream: _searchQuery.isEmpty
+                ? postProvider.getPostsStream()
+                : postProvider.searchPosts(_searchQuery),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return Shimmer.fromColors(
+                  baseColor: Colors.grey[300]!,
+                  highlightColor: Colors.grey[100]!,
+                  child: ListView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    itemCount: 5,
+                    itemBuilder: (context, index) {
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(8),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.grey.withOpacity(0.1),
+                              spreadRadius: 1,
+                              blurRadius: 3,
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          children: [
+                            Row(
                               children: [
-                                ListTile(
-                                  leading: post.imageUrl != null 
-                                    ? ClipRRect(borderRadius: BorderRadius.circular(8), child: Image.network(post.imageUrl!, width: 60, height: 60, fit: BoxFit.cover))
-                                    : Container(width: 60, height: 60, decoration: BoxDecoration(color: Colors.grey[200], borderRadius: BorderRadius.circular(8)), child: const Icon(Icons.image_not_supported, color: Colors.grey)),
-                                  title: Text(post.title, style: const TextStyle(fontWeight: FontWeight.bold)),
-                                  subtitle: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                Container(
+                                  width: 80,
+                                  height: 80,
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey[300],
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
-                                      FutureBuilder<String>(
-                                        future: _getUserName(post.userId),
-                                        builder: (context, userSnap) => Text('Đăng bởi: ${userSnap.data ?? "..."}', style: const TextStyle(fontSize: 12, color: Colors.blueAccent, fontWeight: FontWeight.w500)),
+                                      Container(
+                                        height: 20,
+                                        width: double.infinity,
+                                        decoration: BoxDecoration(
+                                          color: Colors.grey[300],
+                                          borderRadius: BorderRadius.circular(
+                                            4,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Container(
+                                        height: 14,
+                                        width: 100,
+                                        decoration: BoxDecoration(
+                                          color: Colors.grey[300],
+                                          borderRadius: BorderRadius.circular(
+                                            4,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Container(
+                                        height: 14,
+                                        width: double.infinity,
+                                        decoration: BoxDecoration(
+                                          color: Colors.grey[300],
+                                          borderRadius: BorderRadius.circular(
+                                            4,
+                                          ),
+                                        ),
                                       ),
                                       const SizedBox(height: 4),
-                                      Text(post.content, maxLines: 2, overflow: TextOverflow.ellipsis),
-                                    ],
-                                  ),
-                                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => PostDetailScreen(post: post))),
-                                ),
-                                // Dòng tương tác: Like và Edit/Delete
-                                Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Row(
-                                        children: [
-                                          IconButton(
-                                            icon: Icon(isLiked ? Icons.favorite : Icons.favorite_border, color: isLiked ? Colors.red : Colors.grey),
-                                            onPressed: () {
-                                              if (currentUserId != null) {
-                                                postProvider.toggleLike(post.id, currentUserId);
-                                              }
-                                            },
+                                      Container(
+                                        height: 14,
+                                        width: 150,
+                                        decoration: BoxDecoration(
+                                          color: Colors.grey[300],
+                                          borderRadius: BorderRadius.circular(
+                                            4,
                                           ),
-                                          Text('${post.likes.length}'),
-                                        ],
-                                      ),
-                                      if (isOwner) Row(
-                                        children: [
-                                          IconButton(icon: const Icon(Icons.edit, color: Colors.blue, size: 20), onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => CreatePostScreen(post: post, categoryId: post.categoryId)))),
-                                          IconButton(icon: const Icon(Icons.delete, color: Colors.red, size: 20), onPressed: () => _confirmDelete(context, post)),
-                                        ],
+                                        ),
                                       ),
                                     ],
                                   ),
                                 ),
                               ],
                             ),
-                          );
-                        },
+                            const SizedBox(height: 8),
+                            Row(
+                              children: [
+                                Container(
+                                  width: 20,
+                                  height: 20,
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey[300],
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                Container(
+                                  width: 30,
+                                  height: 14,
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey[300],
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
                       );
                     },
                   ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
+                );
+              }
+              final posts = snapshot.data ?? [];
+              if (posts.isEmpty)
+                return (_searchQuery.isEmpty
+                        ? 'Chưa có bài viết nào.'
+                        : 'Không tìm thấy bài viết cho "$_searchQuery"')
+                    .text
+                    .makeCentered();
+
+              return ListView.builder(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                itemCount: posts.length,
+                itemBuilder: (context, index) {
+                  final post = posts[index];
+                  final isOwner = post.userId == currentUserId;
+                  final isLiked =
+                      currentUserId != null &&
+                      post.likes.contains(currentUserId);
+
+                  return VStack([
+                    HStack([
+                      if (post.imageUrl != null)
+                        Image.network(
+                          post.imageUrl!,
+                          width: 80,
+                          height: 80,
+                          fit: BoxFit.cover,
+                        ).card.roundedSM.clip(Clip.antiAlias).make()
+                      else
+                        const Icon(
+                          Icons.image_not_supported,
+                          color: Vx.gray400,
+                        ).box.gray200.roundedSM.make().wh(80, 80),
+
+                      VStack([
+                        post.title.text.bold.lg.make(),
+                        FutureBuilder<String>(
+                          future: _getUserName(post.userId),
+                          builder: (context, userSnap) =>
+                              'Đăng bởi: ${userSnap.data ?? "..."}'
+                                  .text
+                                  .sm
+                                  .blue500
+                                  .semiBold
+                                  .make(),
+                        ),
+                        4.heightBox,
+                        post.content.text.maxLines(2).ellipsis.make(),
+                      ]).pOnly(left: 12).expand(),
+                    ]).onTap(
+                      () => context.nextPage(PostDetailScreen(post: post)),
+                    ),
+
+                    HStack([
+                      HStack([
+                        IconButton(
+                          icon: Icon(
+                            isLiked ? Icons.favorite : Icons.favorite_border,
+                            color: isLiked ? Colors.red : Colors.grey,
+                            size: 20,
+                          ),
+                          onPressed: () {
+                            if (currentUserId != null) {
+                              postProvider.toggleLike(post.id, currentUserId);
+                            }
+                          },
+                        ),
+                        '${post.likes.length}'.text.make(),
+                      ]),
+                      const Spacer(),
+                      if (isOwner)
+                        HStack([
+                          IconButton(
+                            icon: const Icon(
+                              Icons.edit,
+                              color: Colors.blue,
+                              size: 18,
+                            ),
+                            onPressed: () => context.nextPage(
+                              CreatePostScreen(
+                                post: post,
+                                categoryId: post.categoryId,
+                              ),
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(
+                              Icons.delete,
+                              color: Colors.red,
+                              size: 18,
+                            ),
+                            onPressed: () => _confirmDelete(context, post),
+                          ),
+                        ]),
+                    ]).pOnly(top: 8),
+                  ]).p12().card.make().pOnly(bottom: 12);
+                },
+              ).expand();
+            },
+          ).expand(),
+        ]).expand(),
+      ]),
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
           final categories = await categoryProvider.getCategories();
           if (categories.isEmpty) {
-            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Hãy tạo danh mục trước.')));
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Hãy tạo danh mục trước.')),
+            );
             return;
           }
-          Navigator.push(context, MaterialPageRoute(builder: (context) => CreatePostScreen(categoryId: categories.first.id)));
+          if (mounted)
+            context.nextPage(CreatePostScreen(categoryId: categories.first.id));
         },
         child: const Icon(Icons.add),
       ),
@@ -234,8 +483,17 @@ class _HomeScreenState extends State<HomeScreen> {
         title: const Text('Xóa bài viết'),
         content: const Text('Bạn có chắc chắn muốn xóa bài viết này không?'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Hủy')),
-          TextButton(onPressed: () async { await context.read<PostProvider>().deletePost(post.id); if (context.mounted) Navigator.pop(context); }, child: const Text('Xóa', style: TextStyle(color: Colors.red))),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Hủy'),
+          ),
+          TextButton(
+            onPressed: () async {
+              await context.read<PostProvider>().deletePost(post.id);
+              if (context.mounted) Navigator.pop(context);
+            },
+            child: const Text('Xóa', style: TextStyle(color: Colors.red)),
+          ),
         ],
       ),
     );

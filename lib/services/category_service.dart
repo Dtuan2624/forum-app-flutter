@@ -33,10 +33,15 @@ class CategoryService {
   }
 
   Future<void> createCategory(String name) async {
-    await _db.collection('categories').add({
-      'name': name,
-      'createdAt': FieldValue.serverTimestamp(),
-    });
+    try {
+      await _db.collection('categories').add({
+        'name': name,
+        'createdAt': Timestamp.now(),
+      });
+    } catch (e) {
+      print('Create category error: $e');
+      rethrow;
+    }
   }
 
   Future<void> updateCategory(String id, String name) async {
