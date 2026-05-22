@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../core/app_theme.dart';
 import '../../models/category_model.dart';
 import '../../models/post_model.dart';
 import '../../providers/auth_provider.dart';
@@ -96,29 +97,106 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.post == null ? 'Create Post' : 'Edit Post'),
+        backgroundColor: AppTheme.burgundyHeader,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 600),
+          constraints: const BoxConstraints(maxWidth: 2000),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               TextField(
                 controller: _titleController,
-                decoration: const InputDecoration(labelText: 'Title'),
+                style: const TextStyle(color: AppTheme.darkGray),
+                decoration: InputDecoration(
+                  labelText: 'Title',
+                  labelStyle: const TextStyle(color: AppTheme.darkGray),
+                  prefixIcon: const Icon(
+                    Icons.title,
+                    color: AppTheme.goldAccent,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: AppTheme.darkGray),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: AppTheme.darkGray),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(
+                      color: AppTheme.goldAccent,
+                      width: 2,
+                    ),
+                  ),
+                  filled: true,
+                  fillColor: AppTheme.cardGray,
+                ),
               ),
               const SizedBox(height: 16),
               TextField(
                 controller: _contentController,
-                decoration: const InputDecoration(labelText: 'Content'),
+                style: const TextStyle(color: AppTheme.darkGray),
+                decoration: InputDecoration(
+                  labelText: 'Content',
+                  labelStyle: const TextStyle(color: AppTheme.darkGray),
+                  prefixIcon: const Icon(
+                    Icons.description,
+                    color: AppTheme.goldAccent,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: AppTheme.darkGray),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: AppTheme.darkGray),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(
+                      color: AppTheme.goldAccent,
+                      width: 2,
+                    ),
+                  ),
+                  filled: true,
+                  fillColor: AppTheme.cardGray,
+                ),
                 minLines: 4,
                 maxLines: 8,
               ),
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(
                 initialValue: _selectedCategoryId,
-                decoration: const InputDecoration(labelText: 'Category'),
+                style: const TextStyle(color: AppTheme.darkGray),
+                dropdownColor: AppTheme.burgundyHeader,
+                decoration: InputDecoration(
+                  labelText: 'Category',
+                  labelStyle: const TextStyle(color: AppTheme.darkGray),
+                  prefixIcon: const Icon(
+                    Icons.category,
+                    color: AppTheme.goldAccent,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: AppTheme.darkGray),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: AppTheme.darkGray),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(
+                      color: AppTheme.goldAccent,
+                      width: 2,
+                    ),
+                  ),
+                  filled: true,
+                  fillColor: AppTheme.cardGray,
+                ),
                 items: _categories
                     .map(
                       (category) => DropdownMenuItem(
@@ -132,11 +210,30 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
               ),
               const SizedBox(height: 24),
               _loading
-                  ? const Center(child: CircularProgressIndicator())
-                  : ElevatedButton(
-                      onPressed: _save,
-                      child: Text(
-                        widget.post == null ? 'Create Post' : 'Update Post',
+                  ? const Center(
+                      child: CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          AppTheme.goldAccent,
+                        ),
+                      ),
+                    )
+                  : SizedBox(
+                      height: 48,
+                      child: ElevatedButton(
+                        onPressed: _save,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.blueButton,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: Text(
+                          widget.post == null ? 'Create Post' : 'Update Post',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ),
                     ),
             ],

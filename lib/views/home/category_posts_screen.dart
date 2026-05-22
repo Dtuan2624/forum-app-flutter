@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../core/app_theme.dart';
 import '../../models/post_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/post_provider.dart';
@@ -23,7 +24,10 @@ class CategoryPostsScreen extends StatelessWidget {
     final currentUserId = authProvider.user?.uid;
 
     return Scaffold(
-      appBar: AppBar(title: Text(categoryName)),
+      appBar: AppBar(
+        title: Text(categoryName),
+        backgroundColor: AppTheme.burgundyHeader,
+      ),
       body: StreamBuilder<List<PostModel>>(
         stream: postProvider.getPostsStream(categoryId: categoryId),
         builder: (context, snapshot) {
@@ -35,23 +39,31 @@ class CategoryPostsScreen extends StatelessWidget {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(Icons.error_outline, color: Colors.red, size: 48),
+                    const Icon(
+                      Icons.error_outline,
+                      color: AppTheme.accentRed,
+                      size: 48,
+                    ),
                     const SizedBox(height: 16),
                     const Text(
                       'Lỗi truy vấn dữ liệu!',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.lightGray,
+                      ),
                     ),
                     const SizedBox(height: 8),
                     Text(
                       snapshot.error.toString(),
                       textAlign: TextAlign.center,
-                      style: const TextStyle(color: Colors.grey),
+                      style: const TextStyle(color: AppTheme.darkGray),
                     ),
                     const SizedBox(height: 16),
                     const Text(
                       'Hãy kiểm tra Debug Console trong Android Studio để nhấn vào link tạo Index.',
                       textAlign: TextAlign.center,
-                      style: TextStyle(color: Colors.blue),
+                      style: TextStyle(color: AppTheme.blueButton),
                     ),
                   ],
                 ),
@@ -60,12 +72,21 @@ class CategoryPostsScreen extends StatelessWidget {
           }
 
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
+            return const Center(
+              child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(AppTheme.goldAccent),
+              ),
+            );
           }
-          
+
           final posts = snapshot.data ?? [];
           if (posts.isEmpty) {
-            return const Center(child: Text('No posts in this category yet.'));
+            return const Center(
+              child: Text(
+                'No posts in this category yet.',
+                style: TextStyle(color: AppTheme.lightGray),
+              ),
+            );
           }
 
           return ListView.builder(
@@ -76,13 +97,21 @@ class CategoryPostsScreen extends StatelessWidget {
               final isOwner = post.userId == currentUserId;
 
               return Card(
+                color: AppTheme.burgundyHeader,
                 margin: const EdgeInsets.only(bottom: 12),
                 child: ListTile(
-                  title: Text(post.title),
+                  title: Text(
+                    post.title,
+                    style: const TextStyle(
+                      color: AppTheme.goldAccent,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                   subtitle: Text(
                     post.content,
                     maxLines: 3,
                     overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: AppTheme.lightGray),
                   ),
                   onTap: () {
                     Navigator.push(
@@ -92,29 +121,37 @@ class CategoryPostsScreen extends StatelessWidget {
                       ),
                     );
                   },
-                  trailing: isOwner ? Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.edit, color: Colors.blue),
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => CreatePostScreen(
-                                post: post,
-                                categoryId: categoryId,
+                  trailing: isOwner
+                      ? Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              icon: const Icon(
+                                Icons.edit,
+                                color: AppTheme.blueButton,
                               ),
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => CreatePostScreen(
+                                      post: post,
+                                      categoryId: categoryId,
+                                    ),
+                                  ),
+                                );
+                              },
                             ),
-                          );
-                        },
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.delete, color: Colors.red),
-                        onPressed: () => _confirmDelete(context, post),
-                      ),
-                    ],
-                  ) : null,
+                            IconButton(
+                              icon: const Icon(
+                                Icons.delete,
+                                color: AppTheme.accentRed,
+                              ),
+                              onPressed: () => _confirmDelete(context, post),
+                            ),
+                          ],
+                        )
+                      : null,
                 ),
               );
             },
@@ -130,8 +167,9 @@ class CategoryPostsScreen extends StatelessWidget {
             ),
           );
         },
+        backgroundColor: AppTheme.blueButton,
         tooltip: 'Create post in this category',
-        child: const Icon(Icons.add),
+        child: const Icon(Icons.add, color: Colors.white),
       ),
     );
   }
@@ -153,7 +191,10 @@ class CategoryPostsScreen extends StatelessWidget {
               await postProvider.deletePost(post.id);
               if (context.mounted) Navigator.pop(context);
             },
-            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+            child: const Text(
+              'Delete',
+              style: TextStyle(color: AppTheme.accentRed),
+            ),
           ),
         ],
       ),

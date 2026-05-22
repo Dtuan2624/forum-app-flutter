@@ -2,6 +2,7 @@
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:velocity_x/velocity_x.dart';
+import '../../core/app_theme.dart';
 import '../../models/category_model.dart';
 import '../../models/post_model.dart';
 import '../../providers/auth_provider.dart';
@@ -32,21 +33,9 @@ class _HomeScreenState extends State<HomeScreen> {
     super.dispose();
   }
 
-  Future<String> _getUserName(String userId) async {
-    try {
-      final doc = await FirebaseFirestore.instance
-          .collection('nguoi_dung')
-          .doc(userId)
-          .get();
-      return doc.data()?['displayName'] ?? 'Thành viên mới';
-    } catch (e) {
-      return 'Ẩn danh';
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    final authProvider = context.watch<AppAuthProvider>();
+    final authProvider = context.read<AppAuthProvider>();
     final categoryProvider = context.read<CategoryProvider>();
     final postProvider = context.read<PostProvider>();
     final currentUserId = authProvider.user?.uid;
@@ -54,6 +43,8 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       appBar: AppBar(
         title: 'Forum'.text.xl2.bold.make(),
+        backgroundColor: AppTheme.burgundyHeader,
+        elevation: 4,
         actions: [
           IconButton(
             icon: const Icon(Icons.person),
@@ -70,8 +61,9 @@ class _HomeScreenState extends State<HomeScreen> {
             tooltip: 'Đăng xuất',
             onPressed: () async {
               await authProvider.logout();
-              if (context.mounted)
+              if (context.mounted) {
                 Navigator.popUntil(context, (route) => route.isFirst);
+              }
             },
           ),
         ],
@@ -79,14 +71,14 @@ class _HomeScreenState extends State<HomeScreen> {
       body: HStack([
         // Sidebar
         VStack([
-          'Danh mục'.text.xl.bold.make().p16(),
+          'Danh mục'.text.xl.bold.color(AppTheme.goldAccent).make().p16(),
           StreamBuilder<List<CategoryModel>>(
             stream: categoryProvider.categoriesStream,
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return Shimmer.fromColors(
-                  baseColor: Colors.grey[300]!,
-                  highlightColor: Colors.grey[100]!,
+                  baseColor: AppTheme.darkGray,
+                  highlightColor: AppTheme.cardGray,
                   child: ListView.builder(
                     itemCount: 6,
                     itemBuilder: (context, index) {
@@ -97,7 +89,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                         height: 50,
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: AppTheme.cardGray,
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Row(
@@ -107,7 +99,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               height: 40,
                               margin: const EdgeInsets.all(8),
                               decoration: BoxDecoration(
-                                color: Colors.grey[300],
+                                color: AppTheme.darkGray,
                                 borderRadius: BorderRadius.circular(4),
                               ),
                             ),
@@ -116,7 +108,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 height: 16,
                                 margin: const EdgeInsets.only(right: 8),
                                 decoration: BoxDecoration(
-                                  color: Colors.grey[300],
+                                  color: AppTheme.darkGray,
                                   borderRadius: BorderRadius.circular(4),
                                 ),
                               ),
@@ -134,8 +126,12 @@ class _HomeScreenState extends State<HomeScreen> {
                 itemBuilder: (context, index) {
                   final category = categories[index];
                   return ListTile(
-                    leading: const Icon(Icons.folder_open),
-                    title: category.name.text.make(),
+                    leading: const Icon(
+                      Icons.folder_open,
+                      color: AppTheme.goldAccent,
+                    ),
+                    title: category.name.text.color(AppTheme.lightGray).make(),
+                    tileColor: AppTheme.burgundyHeader,
                     onTap: () => context.nextPage(
                       CategoryPostsScreen(
                         categoryId: category.id,
@@ -147,7 +143,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ).expand();
             },
           ).expand(),
-        ]).box.width(280).border(color: Theme.of(context).dividerColor).make(),
+        ]).box.width(280).border(color: AppTheme.darkGray).make(),
 
         // Posts
         VStack([
@@ -157,13 +153,13 @@ class _HomeScreenState extends State<HomeScreen> {
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return Shimmer.fromColors(
-                  baseColor: Colors.grey[300]!,
-                  highlightColor: Colors.grey[100]!,
+                  baseColor: AppTheme.darkGray,
+                  highlightColor: AppTheme.cardGray,
                   child: Container(
                     margin: const EdgeInsets.all(16),
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: Colors.blue.shade50,
+                      color: AppTheme.burgundyHeader,
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Column(
@@ -172,7 +168,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           height: 20,
                           width: double.infinity,
                           decoration: BoxDecoration(
-                            color: Colors.grey[300],
+                            color: AppTheme.darkGray,
                             borderRadius: BorderRadius.circular(4),
                           ),
                         ),
@@ -181,7 +177,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           height: 20,
                           width: 200,
                           decoration: BoxDecoration(
-                            color: Colors.grey[300],
+                            color: AppTheme.darkGray,
                             borderRadius: BorderRadius.circular(4),
                           ),
                         ),
@@ -190,7 +186,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           height: 16,
                           width: 100,
                           decoration: BoxDecoration(
-                            color: Colors.grey[300],
+                            color: AppTheme.darkGray,
                             borderRadius: BorderRadius.circular(4),
                           ),
                         ),
@@ -202,25 +198,40 @@ class _HomeScreenState extends State<HomeScreen> {
               final quote = snapshot.data;
               if (quote != null) {
                 return VStack([
-                  '"${quote['content']}"'.text.italic.lg.makeCentered(),
-                  '- ${quote['author']}'.text.sm.gray600.makeCentered(),
-                ]).p16().card.color(Colors.blue.shade50).make();
+                  '"${quote['content']}"'.text.italic.lg
+                      .color(AppTheme.goldAccent)
+                      .makeCentered(),
+                  '- ${quote['author']}'.text.sm
+                      .color(AppTheme.lightGray)
+                      .makeCentered(),
+                ]).p16().card.color(AppTheme.burgundyHeader).make();
               }
               return const SizedBox.shrink();
             },
           ),
 
           HStack([
-            'Bài viết mới nhất'.text.xl2.bold.make().expand(),
+            'Bài viết mới nhất'.text.xl2.bold
+                .color(AppTheme.goldAccent)
+                .make()
+                .expand(),
             24.widthBox,
             TextField(
               controller: _searchController,
+              style: const TextStyle(color: AppTheme.lightGray),
               decoration: InputDecoration(
                 hintText: 'Tìm kiếm bài viết...',
-                prefixIcon: const Icon(Icons.search),
+                hintStyle: const TextStyle(color: AppTheme.darkGray),
+                prefixIcon: const Icon(
+                  Icons.search,
+                  color: AppTheme.goldAccent,
+                ),
                 suffixIcon: _searchQuery.isNotEmpty
                     ? IconButton(
-                        icon: const Icon(Icons.clear),
+                        icon: const Icon(
+                          Icons.clear,
+                          color: AppTheme.goldAccent,
+                        ),
                         onPressed: () {
                           _searchController.clear();
                           setState(() => _searchQuery = '');
@@ -229,7 +240,21 @@ class _HomeScreenState extends State<HomeScreen> {
                     : null,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(30),
+                  borderSide: const BorderSide(color: AppTheme.darkGray),
                 ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(30),
+                  borderSide: const BorderSide(color: AppTheme.darkGray),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(30),
+                  borderSide: const BorderSide(
+                    color: AppTheme.goldAccent,
+                    width: 2,
+                  ),
+                ),
+                filled: true,
+                fillColor: AppTheme.cardGray,
                 contentPadding: const EdgeInsets.symmetric(horizontal: 20),
               ),
               onChanged: (value) => setState(() => _searchQuery = value),
@@ -243,8 +268,8 @@ class _HomeScreenState extends State<HomeScreen> {
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return Shimmer.fromColors(
-                  baseColor: Colors.grey[300]!,
-                  highlightColor: Colors.grey[100]!,
+                  baseColor: AppTheme.darkGray,
+                  highlightColor: AppTheme.cardGray,
                   child: ListView.builder(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     itemCount: 5,
@@ -253,11 +278,11 @@ class _HomeScreenState extends State<HomeScreen> {
                         margin: const EdgeInsets.only(bottom: 12),
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: AppTheme.burgundyHeader,
                           borderRadius: BorderRadius.circular(8),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.grey.withOpacity(0.1),
+                              color: Colors.black.withOpacity(0.3),
                               spreadRadius: 1,
                               blurRadius: 3,
                             ),
@@ -271,7 +296,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                   width: 80,
                                   height: 80,
                                   decoration: BoxDecoration(
-                                    color: Colors.grey[300],
+                                    color: AppTheme.darkGray,
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                 ),
@@ -285,7 +310,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                         height: 20,
                                         width: double.infinity,
                                         decoration: BoxDecoration(
-                                          color: Colors.grey[300],
+                                          color: AppTheme.darkGray,
                                           borderRadius: BorderRadius.circular(
                                             4,
                                           ),
@@ -296,7 +321,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                         height: 14,
                                         width: 100,
                                         decoration: BoxDecoration(
-                                          color: Colors.grey[300],
+                                          color: AppTheme.darkGray,
                                           borderRadius: BorderRadius.circular(
                                             4,
                                           ),
@@ -307,7 +332,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                         height: 14,
                                         width: double.infinity,
                                         decoration: BoxDecoration(
-                                          color: Colors.grey[300],
+                                          color: AppTheme.darkGray,
                                           borderRadius: BorderRadius.circular(
                                             4,
                                           ),
@@ -318,7 +343,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                         height: 14,
                                         width: 150,
                                         decoration: BoxDecoration(
-                                          color: Colors.grey[300],
+                                          color: AppTheme.darkGray,
                                           borderRadius: BorderRadius.circular(
                                             4,
                                           ),
@@ -336,7 +361,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                   width: 20,
                                   height: 20,
                                   decoration: BoxDecoration(
-                                    color: Colors.grey[300],
+                                    color: AppTheme.darkGray,
                                     borderRadius: BorderRadius.circular(4),
                                   ),
                                 ),
@@ -345,7 +370,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                   width: 30,
                                   height: 14,
                                   decoration: BoxDecoration(
-                                    color: Colors.grey[300],
+                                    color: AppTheme.darkGray,
                                     borderRadius: BorderRadius.circular(4),
                                   ),
                                 ),
@@ -359,12 +384,14 @@ class _HomeScreenState extends State<HomeScreen> {
                 );
               }
               final posts = snapshot.data ?? [];
-              if (posts.isEmpty)
+              if (posts.isEmpty) {
                 return (_searchQuery.isEmpty
                         ? 'Chưa có bài viết nào.'
                         : 'Không tìm thấy bài viết cho "$_searchQuery"')
                     .text
+                    .color(AppTheme.lightGray)
                     .makeCentered();
+              }
 
               return ListView.builder(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -377,82 +404,104 @@ class _HomeScreenState extends State<HomeScreen> {
                       post.likes.contains(currentUserId);
 
                   return VStack([
-                    HStack([
-                      if (post.imageUrl != null)
-                        Image.network(
-                          post.imageUrl!,
-                          width: 80,
-                          height: 80,
-                          fit: BoxFit.cover,
-                        ).card.roundedSM.clip(Clip.antiAlias).make()
-                      else
-                        const Icon(
-                          Icons.image_not_supported,
-                          color: Vx.gray400,
-                        ).box.gray200.roundedSM.make().wh(80, 80),
-
-                      VStack([
-                        post.title.text.bold.lg.make(),
-                        FutureBuilder<String>(
-                          future: _getUserName(post.userId),
-                          builder: (context, userSnap) =>
-                              'Đăng bởi: ${userSnap.data ?? "..."}'
-                                  .text
-                                  .sm
-                                  .blue500
-                                  .semiBold
-                                  .make(),
-                        ),
-                        4.heightBox,
-                        post.content.text.maxLines(2).ellipsis.make(),
-                      ]).pOnly(left: 12).expand(),
-                    ]).onTap(
-                      () => context.nextPage(PostDetailScreen(post: post)),
-                    ),
-
-                    HStack([
-                      HStack([
-                        IconButton(
-                          icon: Icon(
-                            isLiked ? Icons.favorite : Icons.favorite_border,
-                            color: isLiked ? Colors.red : Colors.grey,
-                            size: 20,
-                          ),
-                          onPressed: () {
-                            if (currentUserId != null) {
-                              postProvider.toggleLike(post.id, currentUserId);
-                            }
-                          },
-                        ),
-                        '${post.likes.length}'.text.make(),
-                      ]),
-                      const Spacer(),
-                      if (isOwner)
                         HStack([
-                          IconButton(
-                            icon: const Icon(
-                              Icons.edit,
-                              color: Colors.blue,
-                              size: 18,
+                          if (post.imageUrl != null)
+                            Image.network(
+                              post.imageUrl!,
+                              width: 80,
+                              height: 80,
+                              fit: BoxFit.cover,
+                            ).card.roundedSM.clip(Clip.antiAlias).make()
+                          else
+                            const Icon(
+                                  Icons.image_not_supported,
+                                  color: AppTheme.darkGray,
+                                ).box
+                                .color(AppTheme.cardGray)
+                                .roundedSM
+                                .make()
+                                .wh(80, 80),
+
+                          VStack([
+                            post.title.text.bold.lg
+                                .color(AppTheme.goldAccent)
+                                .make(),
+                            FutureBuilder<String>(
+                              future: _getUserName(post.userId),
+                              builder: (context, userSnap) =>
+                                  'Đăng bởi: ${userSnap.data ?? "..."}'.text.sm
+                                      .color(AppTheme.blueButton)
+                                      .semiBold
+                                      .make(),
                             ),
-                            onPressed: () => context.nextPage(
-                              CreatePostScreen(
-                                post: post,
-                                categoryId: post.categoryId,
+                            4.heightBox,
+                            post.content.text
+                                .color(AppTheme.lightGray)
+                                .maxLines(2)
+                                .ellipsis
+                                .make(),
+                          ]).pOnly(left: 12).expand(),
+                        ]).onTap(
+                          () => context.nextPage(PostDetailScreen(post: post)),
+                        ),
+
+                        HStack([
+                          HStack([
+                            IconButton(
+                              icon: Icon(
+                                isLiked
+                                    ? Icons.favorite
+                                    : Icons.favorite_border,
+                                color: isLiked
+                                    ? AppTheme.accentRed
+                                    : AppTheme.goldAccent,
+                                size: 20,
                               ),
+                              onPressed: () {
+                                if (currentUserId != null) {
+                                  postProvider.toggleLike(
+                                    post.id,
+                                    currentUserId,
+                                  );
+                                }
+                              },
                             ),
-                          ),
-                          IconButton(
-                            icon: const Icon(
-                              Icons.delete,
-                              color: Colors.red,
-                              size: 18,
-                            ),
-                            onPressed: () => _confirmDelete(context, post),
-                          ),
-                        ]),
-                    ]).pOnly(top: 8),
-                  ]).p12().card.make().pOnly(bottom: 12);
+                            '${post.likes.length}'.text
+                                .color(AppTheme.lightGray)
+                                .make(),
+                          ]),
+                          const Spacer(),
+                          if (isOwner)
+                            HStack([
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.edit,
+                                  color: AppTheme.blueButton,
+                                  size: 18,
+                                ),
+                                onPressed: () => context.nextPage(
+                                  CreatePostScreen(
+                                    post: post,
+                                    categoryId: post.categoryId,
+                                  ),
+                                ),
+                              ),
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.delete,
+                                  color: AppTheme.accentRed,
+                                  size: 18,
+                                ),
+                                onPressed: () => _confirmDelete(context, post),
+                              ),
+                            ]),
+                        ]).pOnly(top: 8),
+                      ])
+                      .p12()
+                      .card
+                      .color(AppTheme.burgundyHeader)
+                      .make()
+                      .pOnly(bottom: 12);
                 },
               ).expand();
             },
@@ -468,12 +517,26 @@ class _HomeScreenState extends State<HomeScreen> {
             );
             return;
           }
-          if (mounted)
+          if (mounted) {
             context.nextPage(CreatePostScreen(categoryId: categories.first.id));
+          }
         },
-        child: const Icon(Icons.add),
+        backgroundColor: AppTheme.blueButton,
+        child: const Icon(Icons.add, color: Colors.white),
       ),
     );
+  }
+
+  Future<String> _getUserName(String userId) async {
+    try {
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .get();
+      return userDoc.data()?['name'] ?? 'Người dùng';
+    } catch (e) {
+      return 'Người dùng';
+    }
   }
 
   void _confirmDelete(BuildContext context, PostModel post) {

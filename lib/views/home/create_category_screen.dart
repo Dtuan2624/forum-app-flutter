@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../core/app_theme.dart';
 import '../../models/category_model.dart';
 import '../../providers/category_provider.dart';
 
@@ -59,6 +60,7 @@ class _CreateCategoryScreenState extends State<CreateCategoryScreen> {
         title: Text(
           widget.category == null ? 'Create Category' : 'Edit Category',
         ),
+        backgroundColor: AppTheme.burgundyHeader,
       ),
       body: Center(
         child: SingleChildScrollView(
@@ -67,19 +69,86 @@ class _CreateCategoryScreenState extends State<CreateCategoryScreen> {
             constraints: const BoxConstraints(maxWidth: 400),
             child: Column(
               children: [
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: AppTheme.burgundyHeader,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Column(
+                    children: [
+                      Icon(
+                        Icons.category,
+                        size: 64,
+                        color: AppTheme.goldAccent,
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        widget.category == null
+                            ? 'New Category'
+                            : 'Edit Category',
+                        style: Theme.of(context).textTheme.headlineMedium,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 32),
                 TextField(
                   controller: _nameController,
-                  decoration: const InputDecoration(labelText: 'Category name'),
+                  style: const TextStyle(color: AppTheme.lightGray),
+                  decoration: InputDecoration(
+                    labelText: 'Category name',
+                    labelStyle: const TextStyle(color: AppTheme.darkGray),
+                    prefixIcon: const Icon(
+                      Icons.label,
+                      color: AppTheme.goldAccent,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: AppTheme.darkGray),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: AppTheme.darkGray),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(
+                        color: AppTheme.goldAccent,
+                        width: 2,
+                      ),
+                    ),
+                    filled: true,
+                    fillColor: AppTheme.cardGray,
+                  ),
                 ),
                 const SizedBox(height: 24),
                 _loading
-                    ? const CircularProgressIndicator()
-                    : ElevatedButton(
-                        onPressed: _save,
-                        child: Text(
-                          widget.category == null
-                              ? 'Create Category'
-                              : 'Update Category',
+                    ? const CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          AppTheme.goldAccent,
+                        ),
+                      )
+                    : SizedBox(
+                        width: double.infinity,
+                        height: 48,
+                        child: ElevatedButton(
+                          onPressed: _save,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppTheme.blueButton,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: Text(
+                            widget.category == null
+                                ? 'Create Category'
+                                : 'Update Category',
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                         ),
                       ),
               ],

@@ -111,7 +111,7 @@ class PostService {
       'title': title,
       'content': content,
       'categoryId': categoryId,
-      if (imageUrl != null) 'imageUrl': imageUrl,
+      'imageUrl': ?imageUrl,
     });
   }
 

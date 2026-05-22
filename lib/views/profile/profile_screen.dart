@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../core/app_theme.dart';
 import '../../models/post_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/post_provider.dart';
@@ -40,7 +41,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (user != null) {
       try {
         // Đổi tên collection thành 'nguoi_dung' cho đồng bộ
-        final doc = await FirebaseFirestore.instance.collection('nguoi_dung').doc(user.uid).get();
+        final doc = await FirebaseFirestore.instance
+            .collection('nguoi_dung')
+            .doc(user.uid)
+            .get();
         if (doc.exists && mounted) {
           setState(() {
             _currentName = doc.data()?['displayName'];
@@ -72,19 +76,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
     setState(() => _isSaving = true);
     try {
       String? photoUrl = _currentAvatarUrl;
-      
+
       if (_avatarBytes != null) {
         final fileName = 'avatar_${user.uid}.jpg';
-        photoUrl = await context.read<PostProvider>().uploadImage(_avatarBytes!, fileName);
+        photoUrl = await context.read<PostProvider>().uploadImage(
+          _avatarBytes!,
+          fileName,
+        );
       }
 
       // Lưu vào collection 'nguoi_dung'
-      await FirebaseFirestore.instance.collection('nguoi_dung').doc(user.uid).set({
-        'displayName': _nameController.text.trim(),
-        'photoUrl': photoUrl,
-        'email': user.email,
-        'updatedAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
+      await FirebaseFirestore.instance
+          .collection('nguoi_dung')
+          .doc(user.uid)
+          .set({
+            'displayName': _nameController.text.trim(),
+            'photoUrl': photoUrl,
+            'email': user.email,
+            'updatedAt': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
 
       if (mounted) {
         setState(() {
@@ -100,9 +110,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     } catch (e) {
       if (mounted) {
         setState(() => _isSaving = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Lỗi khi lưu: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Lỗi khi lưu: $e')));
       }
     }
   }
@@ -120,6 +130,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Trang cá nhân'),
+        backgroundColor: AppTheme.burgundyHeader,
         actions: [
           if (!_isEditing)
             IconButton(
@@ -130,7 +141,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
             icon: const Icon(Icons.logout),
             onPressed: () async {
               await authProvider.logout();
-              if (context.mounted) Navigator.popUntil(context, (route) => route.isFirst);
+              if (context.mounted)
+                Navigator.popUntil(context, (route) => route.isFirst);
             },
           ),
         ],
@@ -140,30 +152,44 @@ class _ProfileScreenState extends State<ProfileScreen> {
           Container(
             padding: const EdgeInsets.all(24),
             width: double.infinity,
-            color: Theme.of(context).colorScheme.primaryContainer,
+            color: AppTheme.burgundyHeader,
             child: Column(
               children: [
                 Stack(
                   children: [
                     CircleAvatar(
                       radius: 50,
-                      backgroundColor: Colors.blueAccent,
-                      backgroundImage: _avatarBytes != null 
-                        ? MemoryImage(_avatarBytes!) 
-                        : (_currentAvatarUrl != null ? NetworkImage(_currentAvatarUrl!) : null) as ImageProvider?,
+                      backgroundColor: AppTheme.goldAccent,
+                      backgroundImage: _avatarBytes != null
+                          ? MemoryImage(_avatarBytes!)
+                          : (_currentAvatarUrl != null
+                                    ? NetworkImage(_currentAvatarUrl!)
+                                    : null)
+                                as ImageProvider?,
                       child: (_avatarBytes == null && _currentAvatarUrl == null)
-                        ? Text(user.email![0].toUpperCase(), style: const TextStyle(fontSize: 40, color: Colors.white))
-                        : null,
+                          ? Text(
+                              user.email![0].toUpperCase(),
+                              style: const TextStyle(
+                                fontSize: 40,
+                                color: AppTheme.burgundyHeader,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            )
+                          : null,
                     ),
                     if (_isEditing)
                       Positioned(
                         bottom: 0,
                         right: 0,
                         child: CircleAvatar(
-                          backgroundColor: Colors.white,
+                          backgroundColor: AppTheme.blueButton,
                           radius: 18,
                           child: IconButton(
-                            icon: const Icon(Icons.camera_alt, size: 18, color: Colors.blue),
+                            icon: const Icon(
+                              Icons.camera_alt,
+                              size: 18,
+                              color: Colors.white,
+                            ),
                             onPressed: _pickAvatar,
                           ),
                         ),
@@ -172,36 +198,85 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
                 const SizedBox(height: 16),
                 if (_isSaving)
-                  const CircularProgressIndicator()
+                  const CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      AppTheme.goldAccent,
+                    ),
+                  )
                 else ...[
                   _isEditing
                       ? TextField(
                           controller: _nameController,
+                          style: const TextStyle(
+                            color: AppTheme.darkGray,
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                          ),
                           textAlign: TextAlign.center,
-                          decoration: const InputDecoration(hintText: 'Nhập biệt danh'),
+                          decoration: InputDecoration(
+                            hintText: 'Nhập biệt danh',
+                            hintStyle: const TextStyle(
+                              color: AppTheme.darkGray,
+                            ),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              borderSide: const BorderSide(
+                                color: AppTheme.goldAccent,
+                              ),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              borderSide: const BorderSide(
+                                color: AppTheme.goldAccent,
+                                width: 2,
+                              ),
+                            ),
+                            filled: true,
+                            fillColor: AppTheme.darkBackground,
+                          ),
                         )
                       : Text(
                           _currentName ?? 'Chưa có biệt danh',
-                          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                          style: const TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: AppTheme.goldAccent,
+                          ),
                         ),
                   const SizedBox(height: 4),
-                  Text(user.email!, style: const TextStyle(color: Colors.grey)),
+                  Text(
+                    user.email!,
+                    style: const TextStyle(color: AppTheme.darkGray),
+                  ),
                   if (_isEditing) ...[
                     const SizedBox(height: 16),
                     ElevatedButton(
                       onPressed: _saveProfile,
-                      child: const Text('Lưu thay đổi'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.blueButton,
+                      ),
+                      child: const Text(
+                        'Lưu thay đổi',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
                     ),
                   ],
                 ],
               ],
             ),
           ),
-          const Padding(
-            padding: EdgeInsets.all(16.0),
+          Padding(
+            padding: const EdgeInsets.all(16.0),
             child: Align(
               alignment: Alignment.centerLeft,
-              child: Text('Bài viết của tôi', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              child: Text(
+                'Bài viết của tôi',
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.goldAccent,
+                ),
+              ),
             ),
           ),
           Expanded(
@@ -209,24 +284,60 @@ class _ProfileScreenState extends State<ProfileScreen> {
               stream: postProvider.getPostsStream(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
+                  return const Center(
+                    child: CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        AppTheme.goldAccent,
+                      ),
+                    ),
+                  );
                 }
-                final userPosts = (snapshot.data ?? []).where((p) => p.userId == user.uid).toList();
+                final userPosts = (snapshot.data ?? [])
+                    .where((p) => p.userId == user.uid)
+                    .toList();
+                if (userPosts.isEmpty) {
+                  return const Center(
+                    child: Text(
+                      'Bạn chưa có bài viết nào',
+                      style: TextStyle(color: AppTheme.darkGray),
+                    ),
+                  );
+                }
                 return ListView.builder(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   itemCount: userPosts.length,
                   itemBuilder: (context, index) {
                     final post = userPosts[index];
                     return Card(
+                      color: AppTheme.burgundyHeader,
                       child: ListTile(
-                        leading: post.imageUrl != null 
-                          ? ClipRRect(
-                              borderRadius: BorderRadius.circular(4),
-                              child: Image.network(post.imageUrl!, width: 40, height: 40, fit: BoxFit.cover),
-                            )
-                          : const Icon(Icons.article),
-                        title: Text(post.title),
-                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => PostDetailScreen(post: post))),
+                        leading: post.imageUrl != null
+                            ? ClipRRect(
+                                borderRadius: BorderRadius.circular(4),
+                                child: Image.network(
+                                  post.imageUrl!,
+                                  width: 40,
+                                  height: 40,
+                                  fit: BoxFit.cover,
+                                ),
+                              )
+                            : const Icon(
+                                Icons.article,
+                                color: AppTheme.goldAccent,
+                              ),
+                        title: Text(
+                          post.title,
+                          style: const TextStyle(
+                            color: AppTheme.goldAccent,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => PostDetailScreen(post: post),
+                          ),
+                        ),
                       ),
                     );
                   },
