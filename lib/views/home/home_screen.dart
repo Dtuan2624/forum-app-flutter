@@ -26,6 +26,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
+  bool _showCategories = true;
 
   @override
   void dispose() {
@@ -69,84 +70,109 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
       body: HStack([
-        // Sidebar
-        VStack([
-          'Danh mục'.text.xl.bold.color(AppTheme.goldAccent).make().p16(),
-          StreamBuilder<List<CategoryModel>>(
-            stream: categoryProvider.categoriesStream,
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return Shimmer.fromColors(
-                  baseColor: AppTheme.darkGray,
-                  highlightColor: AppTheme.cardGray,
-                  child: ListView.builder(
-                    itemCount: 6,
-                    itemBuilder: (context, index) {
-                      return Container(
-                        margin: const EdgeInsets.symmetric(
-                          vertical: 8,
-                          horizontal: 16,
-                        ),
-                        height: 50,
-                        decoration: BoxDecoration(
-                          color: AppTheme.cardGray,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 40,
-                              height: 40,
-                              margin: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: AppTheme.darkGray,
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                            ),
-                            Expanded(
-                              child: Container(
-                                height: 16,
-                                margin: const EdgeInsets.only(right: 8),
+        // Sidebar with categories
+        if (_showCategories)
+          VStack([
+            HStack([
+              'Danh mục'.text.xl.bold
+                  .color(AppTheme.goldAccent)
+                  .make()
+                  .expand(),
+              IconButton(
+                icon: const Icon(Icons.close, color: AppTheme.goldAccent),
+                onPressed: () => setState(() => _showCategories = false),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+              ),
+            ]).p8(),
+            StreamBuilder<List<CategoryModel>>(
+              stream: categoryProvider.categoriesStream,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return Shimmer.fromColors(
+                    baseColor: AppTheme.darkGray,
+                    highlightColor: AppTheme.cardGray,
+                    child: ListView.builder(
+                      itemCount: 6,
+                      itemBuilder: (context, index) {
+                        return Container(
+                          margin: const EdgeInsets.symmetric(
+                            vertical: 8,
+                            horizontal: 16,
+                          ),
+                          height: 50,
+                          decoration: BoxDecoration(
+                            color: AppTheme.cardGray,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 40,
+                                height: 40,
+                                margin: const EdgeInsets.all(8),
                                 decoration: BoxDecoration(
                                   color: AppTheme.darkGray,
                                   borderRadius: BorderRadius.circular(4),
                                 ),
                               ),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
-                );
-              }
-              final categories = snapshot.data ?? [];
-              return ListView.builder(
-                itemCount: categories.length,
-                itemBuilder: (context, index) {
-                  final category = categories[index];
-                  return ListTile(
-                    leading: const Icon(
-                      Icons.folder_open,
-                      color: AppTheme.goldAccent,
+                              Expanded(
+                                child: Container(
+                                  height: 16,
+                                  margin: const EdgeInsets.only(right: 8),
+                                  decoration: BoxDecoration(
+                                    color: AppTheme.darkGray,
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
                     ),
-                    title: category.name.text.color(AppTheme.lightGray).make(),
-                    tileColor: AppTheme.burgundyHeader,
-                    onTap: () => context.nextPage(
-                      CategoryPostsScreen(
-                        categoryId: category.id,
-                        categoryName: category.name,
+                  );
+                }
+                final categories = snapshot.data ?? [];
+                return ListView.builder(
+                  itemCount: categories.length,
+                  itemBuilder: (context, index) {
+                    final category = categories[index];
+                    return ListTile(
+                      leading: const Icon(
+                        Icons.folder_open,
+                        color: AppTheme.goldAccent,
                       ),
-                    ),
-                  ).box.roundedSM.make();
-                },
-              ).expand();
-            },
-          ).expand(),
-        ]).box.width(280).border(color: AppTheme.darkGray).make(),
+                      title: category.name.text
+                          .color(AppTheme.lightGray)
+                          .make(),
+                      tileColor: AppTheme.burgundyHeader,
+                      onTap: () => context.nextPage(
+                        CategoryPostsScreen(
+                          categoryId: category.id,
+                          categoryName: category.name,
+                        ),
+                      ),
+                    ).box.roundedSM.make();
+                  },
+                ).expand();
+              },
+            ).expand(),
+          ]).box.width(280).border(color: AppTheme.darkGray).make(),
 
-        // Posts
+        // Main content area
         VStack([
+          // Toggle categories button when hidden
+          if (!_showCategories)
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: IconButton(
+                icon: const Icon(Icons.menu, color: AppTheme.goldAccent),
+                tooltip: 'Hiện danh mục',
+                onPressed: () => setState(() => _showCategories = true),
+              ),
+            ),
+
           // Quote of the day
           FutureBuilder<Map<String, dynamic>?>(
             future: QuoteService.fetchRandomQuote(),
@@ -218,7 +244,7 @@ class _HomeScreenState extends State<HomeScreen> {
             24.widthBox,
             TextField(
               controller: _searchController,
-              style: const TextStyle(color: AppTheme.lightGray),
+              style: const TextStyle(color: AppTheme.darkGray),
               decoration: InputDecoration(
                 hintText: 'Tìm kiếm bài viết...',
                 hintStyle: const TextStyle(color: AppTheme.darkGray),
@@ -405,23 +431,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
                   return VStack([
                         HStack([
-                          if (post.imageUrl != null)
-                            Image.network(
-                              post.imageUrl!,
-                              width: 80,
-                              height: 80,
-                              fit: BoxFit.cover,
-                            ).card.roundedSM.clip(Clip.antiAlias).make()
-                          else
-                            const Icon(
-                                  Icons.image_not_supported,
-                                  color: AppTheme.darkGray,
-                                ).box
-                                .color(AppTheme.cardGray)
-                                .roundedSM
-                                .make()
-                                .wh(80, 80),
-
                           VStack([
                             post.title.text.bold.lg
                                 .color(AppTheme.goldAccent)

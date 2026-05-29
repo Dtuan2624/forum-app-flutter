@@ -95,7 +95,7 @@ class _CreateCategoryScreenState extends State<CreateCategoryScreen> {
                 const SizedBox(height: 32),
                 TextField(
                   controller: _nameController,
-                  style: const TextStyle(color: AppTheme.lightGray),
+                  style: const TextStyle(color: AppTheme.darkGray),
                   decoration: InputDecoration(
                     labelText: 'Category name',
                     labelStyle: const TextStyle(color: AppTheme.darkGray),

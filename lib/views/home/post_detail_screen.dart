@@ -344,7 +344,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                     ),
                   TextField(
                     controller: _commentController,
-                    style: const TextStyle(color: AppTheme.lightGray),
+                    style: const TextStyle(color: AppTheme.darkGray),
                     decoration: InputDecoration(
                       labelText: 'Viết bình luận...',
                       labelStyle: const TextStyle(color: AppTheme.darkGray),
