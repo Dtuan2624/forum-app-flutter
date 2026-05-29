@@ -1,11 +1,11 @@
+import 'dart:convert';
 import 'dart:typed_data';
 import 'package:firebase_database/firebase_database.dart';
-import 'package:firebase_storage/firebase_storage.dart';
+import 'package:flutter/material.dart';
 import '../models/post_model.dart';
 
 class PostService {
   final _db = FirebaseDatabase.instance.ref();
-  final _storage = FirebaseStorage.instance;
 
   Stream<List<PostModel>> getPostsStream({String? categoryId}) {
     return _db.child('posts').onValue.map((event) {
@@ -112,10 +112,10 @@ class PostService {
 
   Future<String?> uploadImage(Uint8List fileBytes, String fileName) async {
     try {
-      final ref = _storage.ref().child('images/$fileName');
-      final uploadTask = await ref.putData(fileBytes);
-      return await uploadTask.ref.getDownloadURL();
+      final base64String = base64Encode(fileBytes);
+      return base64String;
     } catch (e) {
+      debugPrint('Image encoding failed: $e');
       return null;
     }
   }

@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_database/firebase_database.dart';
@@ -71,10 +72,11 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
         _replyToText = null;
       });
     } catch (error) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text('Lỗi: $error')));
+      }
     } finally {
       if (mounted) setState(() => _sendingComment = false);
     }
@@ -251,8 +253,8 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                   if (post.imageUrl != null)
                     ClipRRect(
                       borderRadius: BorderRadius.circular(12),
-                      child: Image.network(
-                        post.imageUrl!,
+                      child: Image.memory(
+                        base64Decode(post.imageUrl!),
                         width: double.infinity,
                         fit: BoxFit.cover,
                       ),
@@ -285,8 +287,9 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                             size: 28,
                           ),
                           onPressed: () {
-                            if (currentUserId != null)
+                            if (currentUserId != null) {
                               postProvider.toggleLike(post.id, currentUserId);
+                            }
                           },
                         ),
                         Text(
@@ -412,8 +415,9 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
     return StreamBuilder<List<CommentModel>>(
       stream: commentProvider.getCommentsStream(postId),
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting)
+        if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
+        }
         final comments = snapshot.data ?? [];
         final topLevel = comments
             .where((comment) => comment.parentCommentId == null)

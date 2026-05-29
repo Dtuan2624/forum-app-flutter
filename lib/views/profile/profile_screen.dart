@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -138,8 +139,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
             icon: const Icon(Icons.logout),
             onPressed: () async {
               await authProvider.logout();
-              if (context.mounted)
+              if (context.mounted) {
                 Navigator.popUntil(context, (route) => route.isFirst);
+              }
             },
           ),
         ],
@@ -160,7 +162,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       backgroundImage: _avatarBytes != null
                           ? MemoryImage(_avatarBytes!)
                           : (_currentAvatarUrl != null
-                                    ? NetworkImage(_currentAvatarUrl!)
+                                    ? MemoryImage(
+                                        base64Decode(_currentAvatarUrl!),
+                                      )
                                     : null)
                                 as ImageProvider?,
                       child: (_avatarBytes == null && _currentAvatarUrl == null)
@@ -311,8 +315,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         leading: post.imageUrl != null
                             ? ClipRRect(
                                 borderRadius: BorderRadius.circular(4),
-                                child: Image.network(
-                                  post.imageUrl!,
+                                child: Image.memory(
+                                  base64Decode(post.imageUrl!),
                                   width: 40,
                                   height: 40,
                                   fit: BoxFit.cover,

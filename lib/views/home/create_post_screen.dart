@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -277,22 +279,14 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                                   width: double.infinity,
                                   fit: BoxFit.cover,
                                 )
-                              : Image.network(
-                                  _imageUrl!,
+                              : _imageUrl != null
+                              ? Image.memory(
+                                  base64Decode(_imageUrl!),
                                   height: 200,
                                   width: double.infinity,
                                   fit: BoxFit.cover,
-                                  errorBuilder: (context, error, stackTrace) {
-                                    return Container(
-                                      height: 200,
-                                      color: AppTheme.darkGray,
-                                      child: const Icon(
-                                        Icons.error,
-                                        color: Colors.red,
-                                      ),
-                                    );
-                                  },
-                                ),
+                                )
+                              : const SizedBox.shrink(),
                         ),
                         const SizedBox(height: 12),
                         Row(
