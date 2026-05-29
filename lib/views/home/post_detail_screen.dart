@@ -251,12 +251,15 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                   ),
                   const SizedBox(height: 16),
                   if (post.imageUrl != null)
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: Image.memory(
-                        base64Decode(post.imageUrl!),
-                        width: double.infinity,
-                        fit: BoxFit.cover,
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxHeight: 280),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: Image.memory(
+                          base64Decode(post.imageUrl!),
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                        ),
                       ),
                     ),
                   const SizedBox(height: 16),

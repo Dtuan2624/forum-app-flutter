@@ -275,14 +275,14 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                           child: _imageBytes != null
                               ? Image.memory(
                                   _imageBytes!,
-                                  height: 200,
+                                  height: 150,
                                   width: double.infinity,
                                   fit: BoxFit.cover,
                                 )
                               : _imageUrl != null
                               ? Image.memory(
                                   base64Decode(_imageUrl!),
-                                  height: 200,
+                                  height: 150,
                                   width: double.infinity,
                                   fit: BoxFit.cover,
                                 )
