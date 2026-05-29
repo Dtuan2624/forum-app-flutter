@@ -1,6 +1,6 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_database/firebase_database.dart';
 import 'package:velocity_x/velocity_x.dart';
 import '../../core/app_theme.dart';
 import '../../models/category_model.dart';
@@ -26,7 +26,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
-  bool _showCategories = true;
+  bool _showCategories = false;
 
   @override
   void dispose() {
@@ -173,68 +173,15 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
 
-          // Quote of the day
-          FutureBuilder<Map<String, dynamic>?>(
-            future: QuoteService.fetchRandomQuote(),
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return Shimmer.fromColors(
-                  baseColor: AppTheme.darkGray,
-                  highlightColor: AppTheme.cardGray,
-                  child: Container(
-                    margin: const EdgeInsets.all(16),
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: AppTheme.burgundyHeader,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Column(
-                      children: [
-                        Container(
-                          height: 20,
-                          width: double.infinity,
-                          decoration: BoxDecoration(
-                            color: AppTheme.darkGray,
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Container(
-                          height: 20,
-                          width: 200,
-                          decoration: BoxDecoration(
-                            color: AppTheme.darkGray,
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Container(
-                          height: 16,
-                          width: 100,
-                          decoration: BoxDecoration(
-                            color: AppTheme.darkGray,
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              }
-              final quote = snapshot.data;
-              if (quote != null) {
-                return VStack([
-                  '"${quote['content']}"'.text.italic.lg
-                      .color(AppTheme.goldAccent)
-                      .makeCentered(),
-                  '- ${quote['author']}'.text.sm
-                      .color(AppTheme.lightGray)
-                      .makeCentered(),
-                ]).p16().card.color(AppTheme.burgundyHeader).make();
-              }
-              return const SizedBox.shrink();
-            },
-          ),
+          // Quote/Inspirational message
+          VStack([
+            '"Share your thoughts and inspire others"'.text.italic.lg
+                .color(AppTheme.goldAccent)
+                .makeCentered(),
+            '- Forum Community'.text.sm
+                .color(AppTheme.lightGray)
+                .makeCentered(),
+          ]).p16().card.color(AppTheme.burgundyHeader).make(),
 
           HStack([
             'Bài viết mới nhất'.text.xl2.bold
@@ -429,88 +376,94 @@ class _HomeScreenState extends State<HomeScreen> {
                       currentUserId != null &&
                       post.likes.contains(currentUserId);
 
-                  return VStack([
-                        HStack([
-                          VStack([
-                            post.title.text.bold.lg
-                                .color(AppTheme.goldAccent)
-                                .make(),
-                            FutureBuilder<String>(
-                              future: _getUserName(post.userId),
-                              builder: (context, userSnap) =>
-                                  'Đăng bởi: ${userSnap.data ?? "..."}'.text.sm
-                                      .color(AppTheme.blueButton)
-                                      .semiBold
+                  return GestureDetector(
+                    onTap: () => context.nextPage(PostDetailScreen(post: post)),
+                    behavior: HitTestBehavior.opaque,
+                    child:
+                        VStack([
+                              HStack([
+                                VStack([
+                                  post.title.text.bold.lg
+                                      .color(AppTheme.goldAccent)
                                       .make(),
-                            ),
-                            4.heightBox,
-                            post.content.text
-                                .color(AppTheme.lightGray)
-                                .maxLines(2)
-                                .ellipsis
-                                .make(),
-                          ]).pOnly(left: 12).expand(),
-                        ]).onTap(
-                          () => context.nextPage(PostDetailScreen(post: post)),
-                        ),
-
-                        HStack([
-                          HStack([
-                            IconButton(
-                              icon: Icon(
-                                isLiked
-                                    ? Icons.favorite
-                                    : Icons.favorite_border,
-                                color: isLiked
-                                    ? AppTheme.accentRed
-                                    : AppTheme.goldAccent,
-                                size: 20,
-                              ),
-                              onPressed: () {
-                                if (currentUserId != null) {
-                                  postProvider.toggleLike(
-                                    post.id,
-                                    currentUserId,
-                                  );
-                                }
-                              },
-                            ),
-                            '${post.likes.length}'.text
-                                .color(AppTheme.lightGray)
-                                .make(),
-                          ]),
-                          const Spacer(),
-                          if (isOwner)
-                            HStack([
-                              IconButton(
-                                icon: const Icon(
-                                  Icons.edit,
-                                  color: AppTheme.blueButton,
-                                  size: 18,
-                                ),
-                                onPressed: () => context.nextPage(
-                                  CreatePostScreen(
-                                    post: post,
-                                    categoryId: post.categoryId,
+                                  FutureBuilder<String>(
+                                    future: _getUserName(post.userId),
+                                    builder: (context, userSnap) =>
+                                        'Đăng bởi: ${userSnap.data ?? "..."}'
+                                            .text
+                                            .sm
+                                            .color(AppTheme.blueButton)
+                                            .semiBold
+                                            .make(),
                                   ),
-                                ),
-                              ),
-                              IconButton(
-                                icon: const Icon(
-                                  Icons.delete,
-                                  color: AppTheme.accentRed,
-                                  size: 18,
-                                ),
-                                onPressed: () => _confirmDelete(context, post),
-                              ),
-                            ]),
-                        ]).pOnly(top: 8),
-                      ])
-                      .p12()
-                      .card
-                      .color(AppTheme.burgundyHeader)
-                      .make()
-                      .pOnly(bottom: 12);
+                                  4.heightBox,
+                                  post.content.text
+                                      .color(AppTheme.lightGray)
+                                      .maxLines(2)
+                                      .ellipsis
+                                      .make(),
+                                ]).pOnly(left: 12).expand(),
+                              ]),
+
+                              HStack([
+                                HStack([
+                                  IconButton(
+                                    icon: Icon(
+                                      isLiked
+                                          ? Icons.favorite
+                                          : Icons.favorite_border,
+                                      color: isLiked
+                                          ? AppTheme.accentRed
+                                          : AppTheme.goldAccent,
+                                      size: 20,
+                                    ),
+                                    onPressed: () {
+                                      if (currentUserId != null) {
+                                        postProvider.toggleLike(
+                                          post.id,
+                                          currentUserId,
+                                        );
+                                      }
+                                    },
+                                  ),
+                                  '${post.likes.length}'.text
+                                      .color(AppTheme.lightGray)
+                                      .make(),
+                                ]),
+                                const Spacer(),
+                                if (isOwner)
+                                  HStack([
+                                    IconButton(
+                                      icon: const Icon(
+                                        Icons.edit,
+                                        color: AppTheme.blueButton,
+                                        size: 18,
+                                      ),
+                                      onPressed: () => context.nextPage(
+                                        CreatePostScreen(
+                                          post: post,
+                                          categoryId: post.categoryId,
+                                        ),
+                                      ),
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(
+                                        Icons.delete,
+                                        color: AppTheme.accentRed,
+                                        size: 18,
+                                      ),
+                                      onPressed: () =>
+                                          _confirmDelete(context, post),
+                                    ),
+                                  ]),
+                              ]).pOnly(top: 8),
+                            ])
+                            .p12()
+                            .card
+                            .color(AppTheme.burgundyHeader)
+                            .make()
+                            .pOnly(bottom: 12),
+                  );
                 },
               ).expand();
             },
@@ -538,11 +491,14 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<String> _getUserName(String userId) async {
     try {
-      final userDoc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(userId)
+      final snapshot = await FirebaseDatabase.instance
+          .ref()
+          .child('users/$userId/displayName')
           .get();
-      return userDoc.data()?['name'] ?? 'Người dùng';
+      if (snapshot.exists) {
+        return snapshot.value.toString();
+      }
+      return 'Người dùng';
     } catch (e) {
       return 'Người dùng';
     }

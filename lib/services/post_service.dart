@@ -1,75 +1,113 @@
 import 'dart:typed_data';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import '../models/post_model.dart';
 
 class PostService {
-  final _db = FirebaseFirestore.instance;
+  final _db = FirebaseDatabase.instance.ref();
   final _storage = FirebaseStorage.instance;
 
   Stream<List<PostModel>> getPostsStream({String? categoryId}) {
-    Query<Map<String, dynamic>> query = _db
-        .collection('posts')
-        .orderBy('createdAt', descending: true);
-    if (categoryId != null && categoryId.isNotEmpty) {
-      query = query.where('categoryId', isEqualTo: categoryId);
-    }
-
-    return query.snapshots().map((snapshot) {
-      return snapshot.docs
-          .map((doc) => PostModel.fromMap(doc.id, doc.data()))
-          .toList();
+    return _db.child('posts').onValue.map((event) {
+      final posts = <PostModel>[];
+      if (event.snapshot.exists) {
+        final data = event.snapshot.value as Map<dynamic, dynamic>;
+        data.forEach((key, value) {
+          if (value is Map<dynamic, dynamic>) {
+            final post = PostModel.fromMap(
+              key.toString(),
+              Map<String, dynamic>.from(value),
+            );
+            if (categoryId == null ||
+                categoryId.isEmpty ||
+                post.categoryId == categoryId) {
+              posts.add(post);
+            }
+          }
+        });
+      }
+      // Sort by creation time descending
+      posts.sort(
+        (a, b) => (b.createdAt?.millisecondsSinceEpoch ?? 0).compareTo(
+          a.createdAt?.millisecondsSinceEpoch ?? 0,
+        ),
+      );
+      return posts;
     });
   }
 
   Future<List<PostModel>> getPosts({String? categoryId}) async {
-    Query<Map<String, dynamic>> query = _db
-        .collection('posts')
-        .orderBy('createdAt', descending: true);
-    if (categoryId != null && categoryId.isNotEmpty) {
-      query = query.where('categoryId', isEqualTo: categoryId);
+    final snapshot = await _db.child('posts').get();
+    final posts = <PostModel>[];
+    if (snapshot.exists) {
+      final data = snapshot.value as Map<dynamic, dynamic>;
+      data.forEach((key, value) {
+        if (value is Map<dynamic, dynamic>) {
+          final post = PostModel.fromMap(
+            key.toString(),
+            Map<String, dynamic>.from(value),
+          );
+          if (categoryId == null ||
+              categoryId.isEmpty ||
+              post.categoryId == categoryId) {
+            posts.add(post);
+          }
+        }
+      });
     }
-
-    final snapshot = await query.get();
-    return snapshot.docs
-        .map((doc) => PostModel.fromMap(doc.id, doc.data()))
-        .toList();
+    // Sort by creation time descending
+    posts.sort(
+      (a, b) => (b.createdAt?.millisecondsSinceEpoch ?? 0).compareTo(
+        a.createdAt?.millisecondsSinceEpoch ?? 0,
+      ),
+    );
+    return posts;
   }
 
   Stream<List<PostModel>> searchPosts(String query) {
-    return _db
-        .collection('posts')
-        .snapshots()
-        .map((snapshot) {
-          final posts = snapshot.docs
-              .map((doc) => PostModel.fromMap(doc.id, doc.data()))
-              .toList();
-          
-          if (query.isEmpty) return posts;
-          
-          return posts.where((post) {
-            final titleLower = post.title.toLowerCase();
-            final contentLower = post.content.toLowerCase();
-            final searchLower = query.toLowerCase();
-            return titleLower.contains(searchLower) || contentLower.contains(searchLower);
-          }).toList();
+    return _db.child('posts').onValue.map((event) {
+      final posts = <PostModel>[];
+      if (event.snapshot.exists) {
+        final data = event.snapshot.value as Map<dynamic, dynamic>;
+        data.forEach((key, value) {
+          if (value is Map<dynamic, dynamic>) {
+            final post = PostModel.fromMap(
+              key.toString(),
+              Map<String, dynamic>.from(value),
+            );
+            posts.add(post);
+          }
         });
+      }
+
+      if (query.isEmpty) {
+        posts.sort(
+          (a, b) => (b.createdAt?.millisecondsSinceEpoch ?? 0).compareTo(
+            a.createdAt?.millisecondsSinceEpoch ?? 0,
+          ),
+        );
+        return posts;
+      }
+
+      return posts.where((post) {
+        final titleLower = post.title.toLowerCase();
+        final contentLower = post.content.toLowerCase();
+        final searchLower = query.toLowerCase();
+        return titleLower.contains(searchLower) ||
+            contentLower.contains(searchLower);
+      }).toList();
+    });
   }
 
   // Hàm Like/Unlike bài viết
   Future<void> toggleLike(String postId, String userId) async {
-    final postRef = _db.collection('posts').doc(postId);
-    final doc = await postRef.get();
-    if (!doc.exists) return;
-
-    final List<String> likes = List<String>.from(doc.data()?['likes'] ?? []);
-    if (likes.contains(userId)) {
-      likes.remove(userId); // Unlike
+    final likesRef = _db.child('posts/$postId/likes/$userId');
+    final snapshot = await likesRef.get();
+    if (snapshot.exists) {
+      await likesRef.remove(); // Unlike
     } else {
-      likes.add(userId); // Like
+      await likesRef.set(true); // Like
     }
-
-    await postRef.update({'likes': likes});
   }
 
   Future<String?> uploadImage(Uint8List fileBytes, String fileName) async {
@@ -89,14 +127,14 @@ class PostService {
     required String userId,
     String? imageUrl,
   }) async {
-    await _db.collection('posts').add({
+    final newPostRef = _db.child('posts').push();
+    await newPostRef.set({
       'title': title,
       'content': content,
       'categoryId': categoryId,
       'userId': userId,
       'imageUrl': imageUrl,
-      'likes': [], // Khởi tạo danh sách like trống
-      'createdAt': FieldValue.serverTimestamp(),
+      'createdAt': DateTime.now().millisecondsSinceEpoch,
     });
   }
 
@@ -107,15 +145,15 @@ class PostService {
     required String categoryId,
     String? imageUrl,
   }) async {
-    await _db.collection('posts').doc(id).update({
+    await _db.child('posts/$id').update({
       'title': title,
       'content': content,
       'categoryId': categoryId,
-      'imageUrl': ?imageUrl,
+      'imageUrl': imageUrl,
     });
   }
 
   Future<void> deletePost(String id) async {
-    await _db.collection('posts').doc(id).delete();
+    await _db.child('posts/$id').remove();
   }
 }

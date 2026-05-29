@@ -1,5 +1,8 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
+import 'package:uuid/uuid.dart';
 import '../../core/app_theme.dart';
 import '../../models/category_model.dart';
 import '../../models/post_model.dart';
@@ -25,6 +28,11 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
   List<CategoryModel> _categories = [];
   String? _selectedCategoryId;
 
+  // Image variables
+  Uint8List? _imageBytes;
+  String? _imageUrl;
+  final ImagePicker _imagePicker = ImagePicker();
+
   @override
   void initState() {
     super.initState();
@@ -32,6 +40,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
       _titleController.text = widget.post!.title;
       _contentController.text = widget.post!.content;
       _selectedCategoryId = widget.post!.categoryId;
+      _imageUrl = widget.post!.imageUrl;
     } else {
       _selectedCategoryId = widget.categoryId;
     }
@@ -46,6 +55,36 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
       if (_selectedCategoryId == null && categories.isNotEmpty) {
         _selectedCategoryId = categories.first.id;
       }
+    });
+  }
+
+  Future<void> _pickImage() async {
+    try {
+      final XFile? pickedFile = await _imagePicker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 80,
+      );
+
+      if (pickedFile != null) {
+        final bytes = await pickedFile.readAsBytes();
+        setState(() {
+          _imageBytes = bytes;
+          _imageUrl = null; // Clear URL when picking new image
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error picking image: $e')));
+      }
+    }
+  }
+
+  void _clearImage() {
+    setState(() {
+      _imageBytes = null;
+      _imageUrl = null;
     });
   }
 
@@ -65,12 +104,43 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
       final authProvider = context.read<AppAuthProvider>();
       final postProvider = context.read<PostProvider>();
       final userId = authProvider.user?.uid ?? 'anonymous';
+
+      // Upload image if new image was selected
+      String? uploadedImageUrl = _imageUrl;
+      if (_imageBytes != null) {
+        final fileName = 'posts/${const Uuid().v4()}.jpg';
+        try {
+          uploadedImageUrl = await postProvider
+              .uploadImage(_imageBytes!, fileName)
+              .timeout(const Duration(seconds: 30));
+        } catch (e) {
+          if (mounted) {
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(SnackBar(content: Text('Image upload failed: $e')));
+          }
+          setState(() => _loading = false);
+          return;
+        }
+
+        if (uploadedImageUrl == null) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Failed to upload image')),
+            );
+          }
+          setState(() => _loading = false);
+          return;
+        }
+      }
+
       if (widget.post == null) {
         await postProvider.createPost(
           title: title,
           content: content,
           categoryId: categoryId,
           userId: userId,
+          imageUrl: uploadedImageUrl,
         );
       } else {
         await postProvider.updatePost(
@@ -78,6 +148,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
           title: title,
           content: content,
           categoryId: categoryId,
+          imageUrl: uploadedImageUrl,
         );
       }
       if (mounted) Navigator.pop(context);
@@ -166,6 +237,90 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                 ),
                 minLines: 4,
                 maxLines: 8,
+              ),
+              const SizedBox(height: 16),
+              // Image picker section
+              GestureDetector(
+                onTap: _loading ? null : _pickImage,
+                child: Container(
+                  decoration: BoxDecoration(
+                    border: Border.all(color: AppTheme.goldAccent, width: 2),
+                    borderRadius: BorderRadius.circular(12),
+                    color: AppTheme.cardGray,
+                  ),
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      if (_imageBytes == null && _imageUrl == null) ...[
+                        Icon(
+                          Icons.add_photo_alternate,
+                          size: 48,
+                          color: AppTheme.goldAccent,
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Tap to add image',
+                          style: TextStyle(
+                            color: AppTheme.goldAccent,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ] else ...[
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: _imageBytes != null
+                              ? Image.memory(
+                                  _imageBytes!,
+                                  height: 200,
+                                  width: double.infinity,
+                                  fit: BoxFit.cover,
+                                )
+                              : Image.network(
+                                  _imageUrl!,
+                                  height: 200,
+                                  width: double.infinity,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return Container(
+                                      height: 200,
+                                      color: AppTheme.darkGray,
+                                      child: const Icon(
+                                        Icons.error,
+                                        color: Colors.red,
+                                      ),
+                                    );
+                                  },
+                                ),
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            TextButton.icon(
+                              onPressed: _loading ? null : _pickImage,
+                              icon: const Icon(Icons.edit),
+                              label: const Text('Change'),
+                              style: TextButton.styleFrom(
+                                foregroundColor: AppTheme.goldAccent,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            TextButton.icon(
+                              onPressed: _loading ? null : _clearImage,
+                              icon: const Icon(Icons.delete),
+                              label: const Text('Remove'),
+                              style: TextButton.styleFrom(
+                                foregroundColor: AppTheme.accentRed,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
               ),
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(

@@ -1,5 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-
 class PostModel {
   final String id;
   final String title;
@@ -24,14 +22,20 @@ class PostModel {
   factory PostModel.fromMap(String id, Map<String, dynamic> data) {
     final createdAtValue = data['createdAt'];
     DateTime? createdAt;
-    if (createdAtValue is Timestamp) {
-      createdAt = createdAtValue.toDate();
+    if (createdAtValue is int) {
+      createdAt = DateTime.fromMillisecondsSinceEpoch(createdAtValue);
     } else if (createdAtValue is DateTime) {
       createdAt = createdAtValue;
-    } else if (createdAtValue is int) {
-      createdAt = DateTime.fromMillisecondsSinceEpoch(createdAtValue);
     }
-    
+
+    // Convert likes from Map to List
+    List<String> likes = [];
+    if (data['likes'] is Map) {
+      likes = (data['likes'] as Map).keys.cast<String>().toList();
+    } else if (data['likes'] is List) {
+      likes = List<String>.from(data['likes'] ?? []);
+    }
+
     return PostModel(
       id: id,
       title: data['title'] as String? ?? '',
@@ -39,7 +43,7 @@ class PostModel {
       categoryId: data['categoryId'] as String? ?? '',
       userId: data['userId'] as String? ?? '',
       imageUrl: data['imageUrl'] as String?,
-      likes: List<String>.from(data['likes'] ?? []),
+      likes: likes,
       createdAt: createdAt,
     );
   }

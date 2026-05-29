@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_database/firebase_database.dart';
 import '../../core/app_theme.dart';
 import '../../models/comment_model.dart';
 import '../../models/post_model.dart';
@@ -32,11 +32,14 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
 
   Future<Map<String, dynamic>?> _getUserInfo(String userId) async {
     try {
-      final doc = await FirebaseFirestore.instance
-          .collection('nguoi_dung')
-          .doc(userId)
+      final snapshot = await FirebaseDatabase.instance
+          .ref()
+          .child('users/$userId')
           .get();
-      return doc.data();
+      if (snapshot.exists) {
+        return Map<String, dynamic>.from(snapshot.value as Map);
+      }
+      return null;
     } catch (e) {
       return null;
     }

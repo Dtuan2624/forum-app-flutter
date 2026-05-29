@@ -1,5 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-
 class CommentModel {
   final String id;
   final String postId;
@@ -24,12 +22,10 @@ class CommentModel {
   ) {
     final rawCreatedAt = data['createdAt'];
     DateTime? createdAt;
-    if (rawCreatedAt is Timestamp) {
-      createdAt = rawCreatedAt.toDate();
+    if (rawCreatedAt is int) {
+      createdAt = DateTime.fromMillisecondsSinceEpoch(rawCreatedAt);
     } else if (rawCreatedAt is DateTime) {
       createdAt = rawCreatedAt;
-    } else if (rawCreatedAt is int) {
-      createdAt = DateTime.fromMillisecondsSinceEpoch(rawCreatedAt);
     }
 
     return CommentModel(

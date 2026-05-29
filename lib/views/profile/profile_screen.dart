@@ -2,7 +2,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_database/firebase_database.dart';
 import '../../core/app_theme.dart';
 import '../../models/post_model.dart';
 import '../../providers/auth_provider.dart';
@@ -40,15 +40,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final user = context.read<AppAuthProvider>().user;
     if (user != null) {
       try {
-        // Đổi tên collection thành 'nguoi_dung' cho đồng bộ
-        final doc = await FirebaseFirestore.instance
-            .collection('nguoi_dung')
-            .doc(user.uid)
+        final snapshot = await FirebaseDatabase.instance
+            .ref()
+            .child('users/${user.uid}')
             .get();
-        if (doc.exists && mounted) {
+        if (snapshot.exists && mounted) {
+          final data = Map<String, dynamic>.from(snapshot.value as Map);
           setState(() {
-            _currentName = doc.data()?['displayName'];
-            _currentAvatarUrl = doc.data()?['photoUrl'];
+            _currentName = data['displayName'];
+            _currentAvatarUrl = data['photoUrl'];
             _nameController.text = _currentName ?? '';
           });
         }
@@ -85,16 +85,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
         );
       }
 
-      // Lưu vào collection 'nguoi_dung'
-      await FirebaseFirestore.instance
-          .collection('nguoi_dung')
-          .doc(user.uid)
-          .set({
-            'displayName': _nameController.text.trim(),
-            'photoUrl': photoUrl,
-            'email': user.email,
-            'updatedAt': FieldValue.serverTimestamp(),
-          }, SetOptions(merge: true));
+      // Lưu vào Realtime Database
+      await FirebaseDatabase.instance.ref().child('users/${user.uid}').update({
+        'displayName': _nameController.text.trim(),
+        'photoUrl': photoUrl,
+        'email': user.email,
+        'updatedAt': DateTime.now().millisecondsSinceEpoch,
+      });
 
       if (mounted) {
         setState(() {

@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 
 class AppTheme {
   // Color Palette
-  static const Color darkBackground = Color(0xFF1a1a1a);
-  static const Color burgundyHeader = Color(0xFF7d3f2e);
-  static const Color goldAccent = Color(0xFFd4a574);
+  static const Color darkBackground = Color(0xff878787);
+  static const Color burgundyHeader = Color(0xffb3b3b3);
+  static const Color goldAccent = Color(0xff000000);
   static const Color blueButton = Color(0xFF0066ff);
-  static const Color lightGray = Color(0xFFf5f5f5);
+  static const Color lightGray = Color(0xff000000);
   static const Color darkGray = Color(0xFF808080);
   static const Color cardGray = Color(0xFFe8e8e8);
   static const Color accentRed = Color(0xFFff4444);
